@@ -1,4 +1,4 @@
-# OPT Lite
+# OPT Mentor (description need rewrite)
 
 [Online Python Tutor](https://pythontutor.com/) (OPT) is a popular virtual learning tool that provides interactive visualisation of program execution in a browser without login. However, such a tool is not easy to maintain because serving allowing the public to run programs in a server without login incurs high computational cost in addition to security risks. 
 
