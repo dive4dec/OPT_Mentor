@@ -1,6 +1,4 @@
-//import * as webllm from "https://esm.run/@mlc-ai/web-llm";
-import * as webllm from "@mlc-ai/web-llm";
-
+import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
 /*************** WebLLM logic ***************/
 const messages = [
@@ -150,6 +148,3 @@ document.getElementById("download").addEventListener("click", function () {
 document.getElementById("send").addEventListener("click", function () {
   onMessageSend();
 });
-
-
-
