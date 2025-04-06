@@ -19,7 +19,12 @@ app.use(cors({
 
 app.use('/models/Llama-3.2-1B-Instruct-q4f16_1-MLC/resolve/main/', express.static('./models/Llama-3.2-1B-Instruct-q4f16_1-MLC/'));
 app.use('/models/Llama-3.2-3B-Instruct-q4f16_1-MLC/resolve/main/', express.static('./models/Llama-3.2-3B-Instruct-q4f16_1-MLC/'));
-app.use('/models/Qwen2.5-0.5B-Instruct-q4f16_1-MLC/resolve/main/', express.static('./models/Qwen2.5-0.5B-Instruct-q4f16_1-MLC/'));
+app.use('/models/DeepSeek-R1-Distill-Llama-8B-q4f16_1-MLC/resolve/main/', express.static('./models/DeepSeek-R1-Distill-Llama-8B-q4f16_1-MLC/'));
+app.use('/models/Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC/resolve/main/', express.static('./models/Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC/'));
+app.use('/models/Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC/resolve/main/', express.static('./models/Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC/'));
+app.use('/models/Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC/resolve/main/', express.static('./models/Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC/'));
+
+
 app.use('/libs/', express.static('./libs/'));
 
 
