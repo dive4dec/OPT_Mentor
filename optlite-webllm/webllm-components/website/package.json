@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "parcel src/index.html  --port 8888",
+    "start": "parcel src/index.html  --port 9999",
     "build": "parcel build src/index.html --dist-dir lib"
   },
   "devDependencies": {
