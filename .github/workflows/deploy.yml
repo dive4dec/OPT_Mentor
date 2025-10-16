@@ -1,0 +1,142 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write 
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # # Toggle whether to inject API config at build time
+      # INJECT_API_CONFIG: ${{ inputs.inject_api_config || 'false' }}
+      # # Where to inject
+      # API_INJECT_TARGET: ${{ inputs.api_inject_target || 'window' }}
+      # # Values used when INJECT_API_CONFIG is true (can also come from secrets)
+      # API_BASE_URL: ${{ inputs.api_base_url || secrets.API_BASE_URL }}
+      # API_KEY: ${{ inputs.api_key || secrets.API_KEY }}
+      # API_MODEL: ${{ inputs.api_model || secrets.API_MODEL }}
+      # # Hide API config panel on UI (still keeps mode toggle)
+      # API_HIDE_API_PANEL: ${{ inputs.api_hide_api_panel || 'false' }}
+
+      SINGLE_MODE: 'local' # 'local' or 'api' or ''; empty means allow the switching of the two modes；The method for passing this value is also determined by API_INJECT_TARGET.
+      INJECT_API_CONFIG: 'true'         # whether to inject API information here
+      API_INJECT_TARGET: 'define'   # or 'window'; 'define' means information injected to js, 'window' means injected to html source file with windowVars
+      API_BASE_URL: 'https://your.api/v1'
+      API_KEY: 'your-api-key'           # be care
+      API_MODEL: 'sft_model_1.5B_f16'
+      # leave API_HIDE_API_PANEL blank, and then INJECT_API_CONFIG will decide whether hide the api panel; otherwise the API information from localStorage (if not empty) will shadow the injection with windowVar
+      API_HIDE_API_PANEL: ''        # whether to hide the api panel
+
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential software-properties-common curl git wget
+        
+    - name: Install global npm packages
+      run: |
+        npm install -g npm@11.2.0
+        npm install -g rollup
+        npm install -g rimraf
+        
+    - name: Build WebLLM Components
+      run: |
+        cd optlite-webllm/webllm-components
+        export HUSKY=0
+        export HUSKY_SKIP_HOOKS=1
+        npm install --ignore-scripts
+        npm install --save-dev rollup@2.56.2
+        chmod +x cleanup-index-js.sh
+        chmod +x node_modules/.bin/rollup
+        export PATH="$PATH:$(npm bin)"
+        npm run build || true
+        
+    - name: Build Python wheel
+      run: |
+        cd optlite-webllm/optlite-components
+        pip install wheel
+        python3 setup.py bdist_wheel -d dist
+
+    - name: Build OPTLite Components
+      run: |
+        cd optlite-webllm/optlite-components
+        npm install
+        chmod +x node_modules/.bin/webpack
+        npm run build:prod
+        
+    - name: Verify build output
+      run: |
+        cd optlite-webllm/optlite-components
+        echo "Build directory contents:"
+        ls -la build/
+        echo "Checking for key files:"
+        if [ -f "build/index.html" ]; then
+          echo "✓ index.html exists"
+        else
+          echo "✗ index.html missing"
+        fi
+        if [ -f "build/live.html" ]; then
+          echo "✓ live.html exists"
+        else
+          echo "✗ live.html missing"
+        fi
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-files
+        path: optlite-webllm/optlite-components/build/
+        retention-days: 1
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-files
+          path: optlite-webllm/optlite-components/build
+
+      - name: Verify deployment files
+        run: |
+          echo "Deployment directory contents:"
+          ls -la optlite-webllm/optlite-components/build/
+          echo "Total files:"
+          find optlite-webllm/optlite-components/build/ -type f | wc -l
+
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: optlite-webllm/optlite-components/build
+          publish_branch: gh-pages
