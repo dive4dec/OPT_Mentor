@@ -661,6 +661,14 @@ export class OptFrontend extends AbstractBaseFrontend {
     return false; // to prevent default "a href" click action
   }
 
+  // Open visualize.html with current state (reverse of openLiveModeUrl)
+  openVisualizeUrl() {
+    var myArgs = this.getAppState();
+    var urlStr = $.param.fragment('index.html', myArgs, 2 /* clobber all */);
+    window.open(urlStr);
+    return false;
+  }
+
   appStateAugmenter(x) { }; // NOP
 
   // get the ENTIRE current state of the app

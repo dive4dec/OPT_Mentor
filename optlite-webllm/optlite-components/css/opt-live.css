@@ -240,3 +240,8 @@ div.ExecutionVisualizer #dataViz {
 #aichatbox .hidden {
   display: none;
 }
+
+/* Make the API mode toggle button wider so long labels fit */
+#toggle-api {
+  min-width: 160px; /* fits "Switch to Local Mode" comfortably */
+}

@@ -43,7 +43,9 @@
                 ...</div>
 
               <div id="codeInputPane"></div>
-              <div id="legendDiv"></div>
+              <div id="legendDiv">
+                <button id="visualizeBtn" class="smallBtn" type="button" title="Open the visualize page with the code currently in the editor" style="float: right;">Visualize</button>
+              </div>
               <div id="executionSlider" style="margin-top: 10px;"></div>
 
               <!-- copied and pasted from pytutor.js
@@ -75,10 +77,42 @@
             
               <button id="askAI" disabled>Ask AI</button>
 
+              <!-- Mode toggle and status (shared by both modes) -->
+              <div class="mode-controls" style="margin-top: 10px;">
+                <span id="mode-status" style="margin-right: 8px; font-weight: bold;">Local Mode</span>
+                <button id="toggle-api">Switch to API Mode</button>
+                <!-- Original Visualize button location (now moved into legendDiv):
+                <button id="visualizeBtn" class="smallBtn" type="button"  title="Open the visualize page with the code currently in the editor">Visualize</button>
+                -->
+              </div>
+
+
+
+              <!-- API configuration panel (visible only in API mode) -->
+              <div class="api-only api-panel" style="display: none; margin-top: 10px;">
+                <!-- API settings inputs; values are persisted in localStorage -->
+                <div class="api-config" style="border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+                  <div style="margin-bottom: 8px;">
+                    <label for="api-url">API Server URL</label>
+                    <input type="text" id="api-url" placeholder="API server address" style="width: 100%; box-sizing: border-box;">
+                  </div>
+                  <div style="margin-bottom: 8px;">
+                    <label for="api-key">API Key</label>
+                    <input type="password" id="api-key" placeholder="Your API key" style="width: 100%; box-sizing: border-box;">
+                  </div>
+                  <div style="margin-bottom: 8px;">
+                    <label for="api-model">Model Name</label>
+                    <input type="text" id="api-model" placeholder="" style="width: 100%; box-sizing: border-box;">
+                  </div>
+                  <!-- reset buttons moved to the bottom of the page -->
+                </div>
+              </div>
+
            
-              <p>Step 1: Initialize WebLLM and Download Model</p>
-              <div class="download-container">
-                <select id="model-selection"></select>
+              <p class="local-only">Step 1: Initialize WebLLM and Download Model</p>
+              <!-- Local-only controls; hidden when API mode is enabled -->
+              <div class="download-container local-only">
+                <select id="model-selection" style="display: none;"></select>
                 <button id="download">Pull Model</button>
               </div>
               <p id="download-status" class="hidden"></p>
@@ -95,6 +129,21 @@
                   <button id="send" disabled>Send</button>
                 </div>
               </div> -->
+            </div>
+
+            <!-- Spacer to leave several lines before bottom controls -->
+            <div style="height: 48px;"></div>
+
+            <!-- Bottom controls: reset buttons for both modes, left-aligned -->
+            <div style="display: flex; justify-content: flex-start; gap: 8px; margin-top: 8px;">
+              <div class="local-only">
+                <button id="reset-local" class="smallBtn" type="button">Reset Local State</button>
+              </div>
+              <div id="api-reset-group" class="api-only" style="display: none;">
+                <!-- The Reset API Config button will reset API config from the sources, not windows value when loading the page -->
+                <button id="reset-api-config" class="smallBtn" type="button" style="display: none;">Reset API Config</button>
+                <button id="reset-api-state" class="smallBtn" type="button">Reset API State</button>
+              </div>
             </div>
 
 
@@ -146,13 +195,9 @@
                   <% } %>
                     <% } %>
 
-                      <% if (htmlWebpackPlugin.options.window) { %>
-                        <script>
-      <% for (var varName in htmlWebpackPlugin.options.window) { %>
-                            window['<%=varName%>'] = <%= JSON.stringify(htmlWebpackPlugin.options.window[varName]) %>;
+      <% if (htmlWebpackPlugin.options.window) { %>
+        <script><% for (var varName in htmlWebpackPlugin.options.window) { %>window['<%=varName%>']=<%= JSON.stringify(htmlWebpackPlugin.options.window[varName]) %>;<% } %></script>
       <% } %>
-                        </script>
-                        <% } %>
 
                           <% for (var chunk in htmlWebpackPlugin.files.chunks) { %>
                             <script src="<%= htmlWebpackPlugin.files.chunks[chunk].entry %>"></script>

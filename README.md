@@ -7,9 +7,14 @@ OPM is a serverless implementation of Online Python Tutor Lite (OPTLite) designe
 - **Offline Capability**: Can be used without internet connection
 - **Enhanced Security**: No server-side code execution, reducing security risks
 - **Educational Focus**: Perfect for classroom settings and online exams
-- **Safe Exam Browser Compatible**: Works with [Safe Exam Browser](https://safeexambrowser.org/)
+- **Safe Exam Browser Compatible**: Works with [Safe Exam Browser](https://safeexambrowser.org/) 
+> ⚠️ The AI model does not work with Safe Exam Browser at present.
 - **Interactive Visualization**: Visual representation of Python program execution
 - **Live Editing Mode**: Real-time code editing and visualization
+- **Socratic AI hints**: Provide Socratic style hints instead of answers with the refined LLM model.
+
+## Installation (Github Action)
+The pages are automaticly compiled with github action, and pushed to the `gh-pages` brance.
 
 ## Installation (for local host)
 1. Ensure you have Docker installed on your system
@@ -18,7 +23,6 @@ OPM is a serverless implementation of Online Python Tutor Lite (OPTLite) designe
 3. The script will:
    - Build the Docker image of optlite-webllm and AI-model
    - RUN the docker container
-
 
 ## Project Structure
 

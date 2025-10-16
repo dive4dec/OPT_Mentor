@@ -139,6 +139,9 @@ export class OptLiveFrontend extends OptFrontend {
     $("#jmpStepFwd").click(() => {
       if (this.myVisualizer) { this.myVisualizer.stepForward(); }
     });
+
+    // Bind reverse navigation to visualize (index) page with current state
+    $("#visualizeBtn").click(this.openVisualizeUrl.bind(this));
   }
 
   demoModeChanged() {
