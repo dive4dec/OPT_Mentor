@@ -21,28 +21,37 @@ OPM is a serverless implementation of Online Python Tutor Lite (OPTLite) designe
 <details open>
 <summary>💡(Click to expand/collapse)</summary>
 
+**Requirement:** A [WebGPU enabled browser](https://caniuse.com/webgpu). Due to security concern, the App uses local GPU resources, so the experience may vary depending on the GPU available in your computer. 
+
 ➡️ Starting Page
 
 ![OPTMentor main page](./screenshots/OPTMentor_main_page.jpg)
+
 After you enter your code:
+
 - The `Visulize` button will navigate you to the page for visualizing the execution.
 - The `Live Edit` button will navigate you to the page featuring a fine-tuned LLM mode that provides Socratic hints.
 - The `Permalink` button will generate a shareable link.
 
 ➡️ Visualization Mode
 ![OPTMentor visualization of excution](./screenshots/OPTMentor_visualize_display.jpg)
+
 Here you can:
+
 - View the visualization of variables, etc., in the right-hand side area.
 - Inspect the execution step-by-step either by dragging the progress bar or by clicking the `<< First`, `<Prev`, and other buttons.
 - Clicking "Edit this code" will navigate you back to the code editing page, where you can also choose to enter the live editing mode. 
 
 ➡️ Live Editing Mode with LLM Integrated
 ![OPTMentor live edit page 1](./screenshots/OPTMentor_live_edit_1.jpg)
+
 Visit the live editing page:
+
 - The LLM model will be automatically downloaded and loaded, You can also click `Pull Model` button to retry when needed.
 - The downloaded model will be cached in the browser. The `Reset Local State` button allows you to clear the cache and refresh the page, simulating a first-time visit.
 
 ![OPTMentor live edit page 2](./screenshots/OPTMentor_live_edit_2.jpg)
+
 - When you see the message under the `Pull Model` button reads like "Finish loading on WebGPU...", it means the LLM model has been successfully loaded.
 - When your code encounters an error, the `Ask AI` button will appear. Clicking on it will provide you with Socratic hints from the AI.
 - You can return to the Visualization page (which focuses on execution visualization) using the `Visualize` button below the code box.
@@ -54,6 +63,7 @@ Visit the live editing page:
 <summary> An Example of Anti-Jailbreak (Click to expand/collapse)</summary>
 
 ![OPTMentor anti jailbreak](./screenshots/OPTMentor_anti_jailbreak.jpg)
+
 Users may attempt to jailbreak the LLM by directly asking for the answer, which must be prevented when using this AI-integrated tool for exams. The screenshot below shows an example where our fine-tuned model successfully prevented the jailbreak attempt.
 </details>
 
