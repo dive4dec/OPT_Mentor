@@ -1,49 +1,75 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
+
+ARG NODE_MAJOR=22
 
 # Install system dependencies
 RUN apt-get update && \
     apt-get install -y \
     build-essential \
-    software-properties-common \
-    python3 \
-    python3-pip \
+    ca-certificates \
+    gnupg \
     curl \
     git \
     wget && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Node.js
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+# Install Node.js (keep current major or higher as required)
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - && \
     apt-get update && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Set environment variables using recommended format
+# Install Python 3.12 from Ubuntu 24.04 repository
+RUN apt-get update && \
+    apt-get install -y python3.12 python3.12-venv && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create isolated Python virtual environment inside image
+RUN python3.12 -m venv /opt/pyenv && \
+    /opt/pyenv/bin/python -m ensurepip --upgrade
+
+# Set environment variables
 ENV HOME=/root
+ENV PATH="/opt/pyenv/bin:${PATH}"
 
 # Create working directory
 WORKDIR /app
 
-RUN mkdir /optlite-components
+# Copy lockfiles first for better dependency-layer caching.
+COPY webllm-components/package.json webllm-components/package-lock.json /app/webllm-components/
+COPY optlite-components/package.json optlite-components/package-lock.json /app/optlite-components/
 
-WORKDIR /app/optlite-components
+# Install Node dependencies before copying full source.
+RUN cd webllm-components && \
+    export HUSKY=0 && \
+    export HUSKY_SKIP_HOOKS=1 && \
+    npm ci --ignore-scripts
+RUN cd optlite-components && npm ci
 
-# Copy rest of the code
+# Copy full source code.
 COPY . .
 
-RUN npm install
+# Build webllm-components first (required by optlite-components imports)
+RUN cd webllm-components && \
+    sed -i 's/\r$//' cleanup-index-js.sh && \
+    chmod +x cleanup-index-js.sh && \
+    npm run build
 
-RUN pip3 install -r optlite/requirements.txt
+# Install Python dependencies for wheel build
+RUN cd optlite-components && pip3 install -r optlite/requirements.txt && \
+    pip3 install setuptools
 
 
 # Build Python package
-RUN python3 setup.py bdist_wheel -d dist
+RUN cd optlite-components && python3 setup.py bdist_wheel -d dist
 
-RUN npm run build:prod
+# Build frontend production assets
+RUN cd optlite-components && npm run build:prod
 
 
-# Expose port
+# Expose static server port
 EXPOSE 8000
 
-CMD ["python3", "-m", "http.server", "-d", "build"]
+# Serve compiled build directory
+CMD ["python3", "-m", "http.server", "-d", "/app/optlite-components/build", "8000"]
 

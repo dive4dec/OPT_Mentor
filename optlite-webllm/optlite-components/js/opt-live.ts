@@ -728,5 +728,24 @@ export class OptLiveFrontend extends OptFrontend {
 $(document).ready(function () {
   optLiveFrontend = new OptLiveFrontend({});
   //optLiveFrontend.setSurveyHTML(); // 2019-04-09 take survey off this page
-});
+}
+
+/* // set default code if there is node 'code' parameter in the hash
+$(document).ready(function () {
+  const initialCodeFromHash = $.bbq.getState('code');
+  optLiveFrontend = new OptLiveFrontend({});
+  //optLiveFrontend.setSurveyHTML(); // 2019-04-09 take survey off this page
+
+  // If there is no 'code' parameter in the hash, set a default code
+  if (!initialCodeFromHash) {
+    const defaultCode = "def convert_to_int(value):\n    return int(value)\n    \nnumber = convert_to_int('abc')\nprint(number)";
+    // Use pushState to set the hash; the second argument (2) means not to trigger the hashchange event
+    $.bbq.pushState({ code: defaultCode }, 2);
+    // Manually trigger parsing to populate the editor with the default code
+    optLiveFrontend.parseQueryString();
+  }
+}
+*/
+
+);
 
