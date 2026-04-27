@@ -71,6 +71,46 @@ table#pyOutputPane {
   margin-bottom: 8px;
 }
 
+/* Visualize AI panel styling (mirrors live.html aichatbox button feel) */
+#visualize-ai-panel button {
+  padding: 10px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+#visualize-ai-panel button:disabled {
+  background-color: lightgray;
+  cursor: not-allowed;
+}
+
+#visualize-ai-panel button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+#visualize-ai-panel #download-status {
+  border: solid 1px black;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 10px;
+}
+
+#visualize-ai-panel #viz-message-out {
+  color: blue;
+}
+
+#visualize-ai-panel #viz-chat-stats {
+  background-color: #d3eceb;
+  padding: 10px;
+  font-size: 0.75rem;
+}
+
+#visualize-ai-panel .hidden {
+  display: none;
+}
+
 button.smallBtn {
   font-size: 10pt;
   padding: 3px;

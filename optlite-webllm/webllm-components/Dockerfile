@@ -1,46 +1,32 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
-# Install.
-RUN \
-  sed -i 's/# \(.*multiverse$\)/\1/g' /etc/apt/sources.list && \
-  apt-get update && \
-  apt-get -y upgrade && \
-  apt-get install -y build-essential && \
-  apt-get install -y software-properties-common && \
-  apt-get install -y byobu curl git htop man unzip vim wget && \
-  rm -rf /var/lib/apt/lists/*
+ARG NODE_MAJOR=22
+ENV HOME=/root
 
-# Install Node.js v22.11.0
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+# Install minimal system deps and Node.js 22.
+RUN apt-get update && \
+    apt-get install -y ca-certificates curl gnupg git && \
+    curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - && \
     apt-get update && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Set environment variables.
-ENV HOME=/root
-
-# Define working directory.
-WORKDIR /root
-
-RUN mkdir /webllm-components
-# Add files.
-
-WORKDIR /root/webllm-components
-
+# Build webllm-components.
+WORKDIR /app/webllm-components
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
 COPY . .
+RUN sed -i 's/\r$//' cleanup-index-js.sh && \
+    chmod +x cleanup-index-js.sh && \
+    npm run build
 
-# Define default command.
-RUN npm install || true && \
-    npm run build || true
+# Install website dependencies and run dev server.
+WORKDIR /app/webllm-components/website
+RUN npm install
 
-WORKDIR /root/webllm-components/website
-
-# Define default command.
-RUN npm install || true
-
-EXPOSE 8000
-
-CMD npm start
+# website/package.json uses `parcel ... --port 8888`
+EXPOSE 8888
+CMD ["npm", "start"]
 
 
 

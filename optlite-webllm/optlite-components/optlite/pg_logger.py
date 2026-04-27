@@ -734,6 +734,9 @@ class PGLogger(bdb.Bdb):
     def setup(self, f, t):
         self.forget()
         self.stack, self.curindex = self.get_stack(f, t)
+        if not self.stack:
+          self.curframe = None
+          return
         self.curframe = self.stack[self.curindex][0]
 
     # should be a reasonably unique ID to match calls and returns:
@@ -768,7 +771,8 @@ class PGLogger(bdb.Bdb):
         if self.done: return
 
         if self._wait_for_mainpyfile:
-            if ((frame.f_globals['__name__'] not in self.modules_to_trace) or
+            frame_module = frame.f_globals.get('__name__', '')
+            if ((frame_module not in self.modules_to_trace) or
                 frame.f_lineno <= 0):
             # older code:
             #if (self.canonic(frame.f_code.co_filename) != "<string>" or
@@ -813,11 +817,13 @@ class PGLogger(bdb.Bdb):
 
     def interaction(self, frame, traceback, event_type):
         self.setup(frame, traceback)
+        if not self.stack:
+          return
         tos = self.stack[self.curindex]
         top_frame = tos[0]
         lineno = tos[1]
 
-        topframe_module = top_frame.f_globals['__name__']
+        topframe_module = top_frame.f_globals.get('__name__', '')
 
         # debug ...
         '''
@@ -915,7 +921,7 @@ class PGLogger(bdb.Bdb):
           elif event_type == 'return' and self.curindex > 0:
             prev_tos = self.stack[self.curindex - 1]
             prev_topframe = prev_tos[0]
-            prev_topframe_module = prev_topframe.f_globals['__name__']
+            prev_topframe_module = prev_topframe.f_globals.get('__name__', '')
             if prev_topframe_module in self.stdout_by_module:
               sys.stdout = self.stdout_by_module[prev_topframe_module]
             else:

@@ -67,6 +67,8 @@ function sanitizeURL(s) {
 export class OptFrontend extends AbstractBaseFrontend {
   originFrontendJsFile: string = 'opt-frontend.js';
   pyInputAceEditor = undefined; // Ace editor object that contains the user's code
+  // preferredDisplayMode: string = 'display';
+  preferredDisplayMode: string = 'ai_display';
 
   // some subclasses use these, so put them in the superclass
   activateSyntaxErrorSurvey: boolean = true;
@@ -558,7 +560,7 @@ export class OptFrontend extends AbstractBaseFrontend {
   }
 
   enterDisplayMode() {
-    this.updateAppDisplay('display');
+    this.updateAppDisplay(this.preferredDisplayMode);
   }
 
   enterEditMode() {
@@ -598,9 +600,10 @@ export class OptFrontend extends AbstractBaseFrontend {
       if (typeof codeopticonSession !== "undefined") { s.cosession = codeopticonSession; }
       if (typeof codeopticonUsername !== "undefined") { s.couser = codeopticonUsername; }
       $.bbq.pushState(s, 2 /* completely override other hash strings to keep URL clean */);
-    } else if (this.appMode == 'display' || this.appMode == 'visualize' /* 'visualize' is deprecated */) {
+    } else if (this.appMode == 'display' || this.appMode == 'visualize' || this.appMode == 'ai_display' /* 'visualize' is deprecated */) {
       assert(this.myVisualizer);
-      this.appMode = 'display'; // canonicalize
+      this.appMode = (this.appMode == 'ai_display') ? 'ai_display' : 'display'; // canonicalize
+      this.preferredDisplayMode = this.appMode;
 
       $("#pyInputPane").hide();
       $("#pyOutputPane,#embedLinkDiv").show();
@@ -638,7 +641,7 @@ export class OptFrontend extends AbstractBaseFrontend {
 
       $(document).scrollTop(0); // scroll to top to make UX better on small monitors
 
-      var s: any = { mode: 'display' };
+      var s: any = { mode: this.appMode };
       // keep these persistent so that they survive page reloads
       if (typeof codeopticonSession !== "undefined") { s.cosession = codeopticonSession; }
       if (typeof codeopticonUsername !== "undefined") { s.couser = codeopticonUsername; }
@@ -651,7 +654,7 @@ export class OptFrontend extends AbstractBaseFrontend {
 
     // log at the end after appMode gets canonicalized
     this.logEventCodeopticon({ type: 'updateAppDisplay', mode: this.appMode, appState: this.getAppState() });
-    assert(this.appMode === 'edit' || this.appMode === 'display'); // postcondition
+    assert(this.appMode === 'edit' || this.appMode === 'display' || this.appMode === 'ai_display'); // postcondition
   }
 
   openLiveModeUrl() {
@@ -661,11 +664,16 @@ export class OptFrontend extends AbstractBaseFrontend {
     return false; // to prevent default "a href" click action
   }
 
-  // Open visualize.html with current state (reverse of openLiveModeUrl)
+  // Open visualize.html with current state (reverse of openLiveModeUrl).
+  // Webpack: index.html = live, visualize.html = visualize. Build the hash with BBQ
+  // from an empty base, then resolve visualize.html against the current page so the
+  // opened URL is always one absolute path + #state (never index.html#... for this action).
   openVisualizeUrl() {
     var myArgs = this.getAppState();
-    var urlStr = $.param.fragment('index.html', myArgs, 2 /* clobber all */);
-    window.open(urlStr);
+    var hashOnly = $.param.fragment('', myArgs, 2 /* clobber all */);
+    var target = new URL('visualize.html', window.location.href);
+    target.hash = hashOnly.charAt(0) === '#' ? hashOnly.slice(1) : hashOnly;
+    window.open(target.href);
     return false;
   }
 
@@ -766,8 +774,12 @@ export class OptFrontend extends AbstractBaseFrontend {
     }
 
     if ((queryStrOptions.appMode == 'display' ||
+      queryStrOptions.appMode == 'ai_display' ||
       queryStrOptions.appMode == 'visualize' /* deprecated */) &&
       queryStrOptions.preseededCode /* jump to 'display' mode only with preseeded code */) {
+      //this.preferredDisplayMode = queryStrOptions.appMode == 'ai_display' ? 'ai_display' : 'display';
+      this.preferredDisplayMode = 'ai_display'; // always use "ai_display" even when "mode=display" is used in the url
+
       this.executeCode(this.preseededCurInstr); // will switch to 'display' mode
     }
     $.bbq.removeState(); // clean up the URL no matter what

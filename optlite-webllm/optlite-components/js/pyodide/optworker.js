@@ -10,10 +10,15 @@ self.onmessage = async (event) => {
   try {
     let results;
     if (id < 0) { // initialize worker
-      // load pyodide from its url
-      importScripts(self.pyodide);
-      self.pyodide = await loadPyodide();
+      // load pyodide from its url — indexURL must match the CDN folder or loadPackage("pydoc_data") can fail silently / 404.
+      const pyodideScript = self.pyodide;
+      importScripts(pyodideScript);
+      const indexURL = pyodideScript.replace(/\/[^/]*$/, "/");
+      self.pyodide = await loadPyodide({ indexURL });
       await self.pyodide.loadPackage("micropip");
+      // In the 0.27.3 lockfile, package key is "pydoc-data" (import name is still pydoc_data).
+      // pydoc-data is not necessary for help(list), but need to add import pydoc_data for help('for') if self.pyodide.loadPackage("pydoc-data") is not used
+      // await self.pyodide.loadPackage("pydoc-data"); 
       // fetch and install optlite from pypi
       results = await self.pyodide.runPythonAsync(`
       import micropip

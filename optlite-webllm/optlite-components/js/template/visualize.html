@@ -42,7 +42,7 @@
     <!-- <div id="surveyPane"></div> -->
 
     <p>
-      <button id="executeBtn" class="smallBtn" type="button">Visualize</button>
+      <button id="executeBtn" class="smallBtn" type="button">Visualize Execution</button>
       <button id="liveModeBtn" class="smallBtn" type="button">Live Edit</button>
       <button id="genUrlBtn" class="smallBtn" type="button">Permalink</button>
       <input type="text" id="urlOutput" size="30"/>
@@ -55,6 +55,19 @@
   </div>
 
   <div id="pyOutputPane"></div>
+  <div id="visualize-ai-panel" style="display: none; margin-top: 12px; width: 550px; max-width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+    <div style="display: none; margin-bottom: 8px; font-weight: bold;">AI Assistant (Local)</div>
+    <div style="margin-bottom: 8px;">
+      <select id="viz-model-selection" style="max-width: 100%;"></select>
+      <button id="viz-download" class="smallBtn" type="button" style="display: none;">Pull Model</button>
+    </div>
+    <p id="viz-message-out" class="hidden" style="word-break: break-word;"></p>
+    <p id="viz-chat-stats" class="hidden"></p>
+    <div style="margin-bottom: 8px;">
+      <button id="viz-ask-ai" class="smallBtn" type="button" style="display: none;">Ask AI</button>
+    </div>
+    <p id="download-status" class="hidden"></p>
+  </div>
 
   <% if (htmlWebpackPlugin.options.unsupportedBrowser) { %>
     <style>.unsupported-browser { display: none; }</style>

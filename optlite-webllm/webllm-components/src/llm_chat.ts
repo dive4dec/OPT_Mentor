@@ -715,10 +715,16 @@ export class LLMChatPipeline {
       throw Error("Cannot call process when it is stoppped");
     }
 
-    // Get max_tokens from generationConfig (specified by user in completion request)
-    // If not specified, do not set a limit
+    // Get max_tokens from generationConfig (specified by user in completion request).
+    // If missing / null / non-finite, treat as no limit (Infinity). Note: `if (genConfig.max_tokens)`
+    // would wrongly skip valid limits only when falsy; we require a positive finite number.
     let max_tokens = Infinity;
-    if (genConfig !== undefined && genConfig.max_tokens) {
+    if (
+      genConfig !== undefined &&
+      genConfig.max_tokens != null &&
+      Number.isFinite(genConfig.max_tokens) &&
+      genConfig.max_tokens > 0
+    ) {
       max_tokens = genConfig.max_tokens;
     }
     if (max_tokens <= 0) {
