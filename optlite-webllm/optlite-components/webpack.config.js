@@ -8,8 +8,9 @@ const hideApiPanel = String(process.env.API_HIDE_API_PANEL || process.env.INJECT
 const injectTarget = String(process.env.API_INJECT_TARGET || 'window').toLowerCase();
 
 // Sub-path deployment: set PUBLIC_PATH=/OPT_Mentor/ when serving under a sub-path.
-// Default 'auto' resolves relative to the page URL (works for GitHub Pages).
-const publicPath = process.env.PUBLIC_PATH || 'auto';
+// When unset (e.g., GitHub Actions → GH Pages), omit publicPath entirely so
+// webpack uses its default behavior (relative URLs in HtmlWebpackPlugin).
+const publicPath = process.env.PUBLIC_PATH || undefined;
 
 const windowVars = (injectApi && injectTarget === 'window') ? {
   ...(process.env.API_BASE_URL ? { API_BASE_URL: String(process.env.API_BASE_URL).trim() } : {}),
@@ -90,7 +91,7 @@ module.exports = {
 
     output: {
         path: __dirname + "/build/",
-        publicPath,
+        ...(publicPath ? { publicPath } : {}),
         filename: "[name].bundle.js",
         sourceMapFilename: "[file].map",
     },

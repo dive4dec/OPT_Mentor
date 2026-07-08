@@ -22,7 +22,7 @@ RUN npm ci
 COPY optlite-components/ .
 COPY --from=webllm-builder /app/opt-mentor/webllm-components/lib ../webllm-components/lib
 COPY webllm-components/package.json ../webllm-components/
-ARG PUBLIC_PATH=/
+ARG PUBLIC_PATH=""
 ENV PUBLIC_PATH=${PUBLIC_PATH}
 ENV INJECT_API_CONFIG=true
 ENV API_INJECT_TARGET=define
@@ -36,7 +36,7 @@ ENV API_MODEL=${API_MODEL}
 ENV SINGLE_MODE=${SINGLE_MODE}
 RUN pip3 install --break-system-packages -r optlite/requirements.txt \
     && python3 setup.py bdist_wheel -d dist \
-    && npx webpack --mode=production \
+    && npm run build:prod \
     && test -f build/index.html \
     && test -f build/live.html
 
