@@ -1,5 +1,5 @@
 import { OptLite, combineDefaults } from './global'
-import { default as optlite } from '../../dist/optlite-0.0.4-py2.py3-none-any.whl';
+import { default as optlite } from '../../dist/optlite-0.0.5-py2.py3-none-any.whl';
 
 const pyodideWorker = new Worker(new URL("./optworker.js", import.meta.url));
 const callbacks: Record<number, (data: any) => void> = {};
