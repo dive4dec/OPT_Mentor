@@ -79,7 +79,7 @@ PYTUTOR_INLINE_TYPE_STR = '#pythontutor_hide_type:'
 
 PYTUTOR_SKIP_STR = '#pythontutor_skip:'
 
-CLASS_RE = re.compile('class\s+')
+CLASS_RE = re.compile(r'class\s+')
 
 # copied-pasted from translate() in https://github.com/python/cpython/blob/2.7/Lib/fnmatch.py
 def globToRegex(pat):
@@ -116,7 +116,7 @@ def globToRegex(pat):
                 res = '%s[%s]' % (res, stuff)
         else:
             res = res + re.escape(c)
-    return res + '\Z(?ms)'
+    return res + r'\Z(?ms)'
 
 def compileGlobMatch(pattern):
     # very important to use match and *not* search!
