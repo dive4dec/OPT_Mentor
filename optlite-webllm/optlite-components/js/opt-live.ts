@@ -633,8 +633,13 @@ export class OptLiveFrontend extends OptFrontend {
     }
     if (pyState === 'pyodide') {
       let call = async () => {
-        let result: any = await asyncRun(codeToExec, this.rawInputLst, {});
-        execCallback(JSON.parse(result.results))
+        try {
+          let result: any = await asyncRun(codeToExec, this.rawInputLst, {});
+          execCallback(JSON.parse(result.results))
+        } catch (err) {
+          this.setFronendError(["Error: " + (err as Error).message]);
+          this.doneExecutingCode();
+        }
       }
       call();
     }

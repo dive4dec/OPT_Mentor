@@ -1,71 +1,48 @@
-FROM ubuntu:22.04
-
-#Install system dependencies
-RUN apt-get update && \
-    apt-get install -y \
-    build-essential \
-    software-properties-common \
-    python3 \
-    python3-pip \
-    curl \
-    git \
-    wget && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install Node.js
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get update && \
-    apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN npm install -g npm@11.2.0
-
-ENV HOME=/root
-
-WORKDIR /app
-
-RUN mkdir /opt-mentor
-
-WORKDIR /app/opt-mentor
-
-COPY . .
-
-
+# ── Stage 1: Build webllm-components (rollup → lib/index.js) ──
+FROM node:22-slim AS webllm-builder
+WORKDIR /app/opt-mentor/webllm-components
+COPY webllm-components/package.json webllm-components/package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY webllm-components/ .
 ENV HUSKY=0
 ENV HUSKY_SKIP_HOOKS=1
-WORKDIR /app/opt-mentor/webllm-components
+RUN chmod +x cleanup-index-js.sh \
+    && npx rollup -c rollup.config.cjs \
+    && ./cleanup-index-js.sh \
+    && test -f lib/index.js
 
-RUN npm install -g rollup && \
-    npm install --ignore-scripts && \
-    npm install --save-dev rollup@2.56.2 && \
-    chmod +x cleanup-index-js.sh && \
-    chmod +x node_modules/.bin/rollup && \
-    export PATH="$PATH:$(npm bin)" && \
-    npm run build || true
-
-
+# ── Stage 2: Build optlite-components (webpack → build/) ──
+FROM node:22-slim AS optlite-builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/opt-mentor/optlite-components
+COPY optlite-components/package.json optlite-components/package-lock.json ./
+RUN npm ci
+COPY optlite-components/ .
+COPY --from=webllm-builder /app/opt-mentor/webllm-components/lib ../webllm-components/lib
+COPY webllm-components/package.json ../webllm-components/
+ARG PUBLIC_PATH=/
+ENV PUBLIC_PATH=${PUBLIC_PATH}
+ENV INJECT_API_CONFIG=true
+ENV API_INJECT_TARGET=define
+ARG API_BASE_URL=""
+ARG API_KEY=""
+ARG API_MODEL=""
+ARG SINGLE_MODE=""
+ENV API_BASE_URL=${API_BASE_URL}
+ENV API_KEY=${API_KEY}
+ENV API_MODEL=${API_MODEL}
+ENV SINGLE_MODE=${SINGLE_MODE}
+RUN pip3 install --break-system-packages -r optlite/requirements.txt \
+    && python3 setup.py bdist_wheel -d dist \
+    && npx webpack --mode=production \
+    && test -f build/index.html \
+    && test -f build/live.html
 
-
-RUN npm install
-
-
-RUN pip3 install -r optlite/requirements.txt
-
-RUN python3 setup.py bdist_wheel -d dist
-
-
-
-#premissions
-RUN npm install -g rimraf
-RUN chmod +x node_modules/.bin/webpack
-
-RUN npm run build:prod
-
-
-# Expose port
+# ── Stage 3: nginx serving static files ──
+FROM nginx:1.29-alpine3.23
+COPY --from=optlite-builder /app/opt-mentor/optlite-components/build/ /usr/share/nginx/html/
 EXPOSE 8000
-
-
-CMD ["python3", "-m", "http.server", "-d", "build"]
-
+COPY optlite-components/nginx.conf /etc/nginx/conf.d/default.conf
+CMD ["nginx", "-g", "daemon off;"]

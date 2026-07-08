@@ -227,8 +227,8 @@ export function initVisualizeAI(params: VisualizeAIInitParams) {
     setPanelVisibility(params.getMode);
   });
 
-  // Mimic single-model live behavior: auto-load local model on init.
-  if (availableModels.length > 0) {
+  // Auto-load local model on init only if WebGPU is available
+  if (availableModels.length > 0 && ('gpu' in navigator)) {
     setStatusText("Initializing local model ...");
     initializeWebLLMEngine().then(() => {
       askAIButton.disabled = false;
@@ -237,6 +237,8 @@ export function initVisualizeAI(params: VisualizeAIInitParams) {
       askAIButton.disabled = true;
       setPanelVisibility(params.getMode);
     });
+  } else {
+    setStatusText("WebGPU not available — local model disabled.");
   }
 
   setPanelVisibility(params.getMode);

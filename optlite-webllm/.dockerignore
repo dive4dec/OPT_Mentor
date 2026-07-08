@@ -1,0 +1,10 @@
+**/node_modules/
+**/build/
+**/dist/
+**/.husky/
+**/site/
+**/docs/
+**/tests/
+**/__tests__/
+**/*.md
+**/.gitignore

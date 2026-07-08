@@ -729,9 +729,9 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleBtn2.addEventListener("click", toggleAPIMode);
     }
 
-    // Auto-trigger model download on page load in Local Mode
+    // Auto-trigger model download on page load in Local Mode (requires WebGPU)
     const downloadBtn = document.getElementById("download") as HTMLButtonElement | null;
-    if (downloadBtn && !API_CONFIG.enabled) {
+    if (downloadBtn && !API_CONFIG.enabled && ('gpu' in navigator)) {
         downloadBtn.click();
     }
 });
