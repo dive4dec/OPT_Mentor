@@ -7,8 +7,9 @@ const injectApi = String(process.env.INJECT_API_CONFIG || '').toLowerCase() === 
 const hideApiPanel = String(process.env.API_HIDE_API_PANEL || process.env.INJECT_API_CONFIG || '').toLowerCase() === 'true';
 const injectTarget = String(process.env.API_INJECT_TARGET || 'window').toLowerCase();
 
-// Sub-path deployment: set PUBLIC_PATH=/OPT_Mentor/ when serving under a sub-path
-const publicPath = process.env.PUBLIC_PATH || '/';
+// Sub-path deployment: set PUBLIC_PATH=/OPT_Mentor/ when serving under a sub-path.
+// Default 'auto' resolves relative to the page URL (works for GitHub Pages).
+const publicPath = process.env.PUBLIC_PATH || 'auto';
 
 const windowVars = (injectApi && injectTarget === 'window') ? {
   ...(process.env.API_BASE_URL ? { API_BASE_URL: String(process.env.API_BASE_URL).trim() } : {}),
