@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-10
+
+### Added
+- **nginx reverse proxy for API key hiding** — the LLM API key is now injected server-side by nginx, never visible in the browser. The browser calls same-origin `/OPT_Mentor/ai-proxy/chat/completions`; nginx forwards to the upstream API with `Authorization: Bearer ***` injected from a Kubernetes secret. GitHub Pages deployments continue using WebLLM (no proxy, no key).
+  - `nginx.conf` — new `/ai-proxy/` location block with `proxy_pass`, `Authorization` header injection, SSE streaming support
+  - `Dockerfile` — uses nginx `envsubst` template (`/etc/nginx/templates/default.conf.template`) for runtime env var substitution (`API_PROXY_TARGET`, `API_PROXY_KEY`)
+  - `webllm.ts` — `callOpenAIAPI` skips sending `Authorization` header from client when using the proxy
+  - Helm chart — `env` vars for `API_PROXY_TARGET` and `API_PROXY_KEY` (from K8s secret `opt-mentor-api-key`)
+
+### Fixed
+- **Ask AI button shown during code execution** — the `MutationObserver` in `webllm.ts` showed the Ask AI button whenever `frontendErrorOutput` had any text, including the transient "Running your code ..." message. The `startsWith('Running your code')` check failed because `htmlspecialchars` converts spaces to `&nbsp;` (non-breaking spaces, U+00A0). Fixed by using regex `/^Running\s+your\s+code/` which matches non-breaking spaces via `\s`.
+- **VCR controls not shown on error** — in `opt-live.ts`, the error path (syntax error or runtime exception) never called `finishSuccessfulExecution()`, so VCR controls stayed `display: none` on the first error run. Now always creates an `ExecutionVisualizer` and shows VCR controls (wrapped in try-catch), so users can step through execution even when errors occur.
+- **Duplicate element IDs** — the `live.html` template used the same IDs (`vcrControls`, `curInstr`, `executionSlider`, `raw_input_textbox`, etc.) as the `ExecutionVisualizer`'s internal elements, causing 14 duplicate ID violations in the browser DOM. Fixed by renaming all template IDs to use a `_live` suffix (e.g., `vcrControls_live`, `curInstr_live`, `raw_input_textbox_live`).
+- **Legend arrows too large** — after renaming IDs to `_live` suffix, the CSS selectors in `opt-live.css` no longer matched the renamed SVG elements, causing arrows to render at their default (very large) size. Fixed by adding `_live` variants alongside existing CSS selectors.
+- **Error message cleanup** — `setFronendError` for compiler/runtime errors now uses `ignoreLog=true` to suppress the misleading `(UNSUPPORTED FEATURES)` suffix; removed redundant `"Error: "` prefix from the catch handler.
+- **Ace editor textarea audit** — added `name="ace_code_input"` attribute to the Ace editor's internal textarea to satisfy browser autofill/accessibility audit.
+
 ## [0.1.0] - 2026-07-09
 
 ### Added
