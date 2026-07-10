@@ -47,28 +47,28 @@
                 ...</div>
 
               <div id="codeInputPane"></div>
-              <div id="legendDiv">
+              <div id="legendDiv_live">
                 <button id="visualizeBtn" class="smallBtn" type="button" title="Open the visualize page with the code currently in the editor" style="float: right;">Visualize Execution</button>
               </div>
-              <div id="executionSlider" style="margin-top: 10px;"></div>
+              <div id="executionSlider_live" style="margin-top: 10px;"></div>
 
               <!-- copied and pasted from pytutor.js
                TODO: integrate all this together and modularize -->
 
-              <div id="vcrControls" style="display: none;">
-                <button id="jmpFirstInstr" , type="button">&lt;&lt; First</button>
-                <button id="jmpStepBack" , type="button">&lt; Prev</button>
-                <button id="jmpStepFwd" , type="button">Next &gt;</button>
-                <button id="jmpLastInstr" , type="button">Last &gt;&gt;</button>
+              <div id="vcrControls_live" style="display: none;">
+                <button id="jmpFirstInstr_live" , type="button">&lt;&lt; First</button>
+                <button id="jmpStepBack_live" , type="button">&lt; Prev</button>
+                <button id="jmpStepFwd_live" , type="button">Next &gt;</button>
+                <button id="jmpLastInstr_live" , type="button">Last &gt;&gt;</button>
                 <button id="genUrlBtn" class="smallBtn" type="button">Permalink</button>
                 <input type="text" id="urlOutput" size="10" />
               </div>
-              <div id="curInstr" style="display: none;"></div>
+              <div id="curInstr_live" style="display: none;"></div>
 
-              <div id="rawUserInputDiv" style="display: none;">
-                <span id="userInputPromptStr"></span>
-                <input type="text" id="raw_input_textbox" size="30" />
-                <button id="raw_input_submit_btn">Submit</button>
+              <div id="rawUserInputDiv_live" style="display: none;">
+                <span id="userInputPromptStr_live"></span>
+                <input type="text" id="raw_input_textbox_live" size="30" />
+                <button id="raw_input_submit_btn_live">Submit</button>
               </div>
               </div>
               <div id="frontendErrorOutput"></div>

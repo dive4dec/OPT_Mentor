@@ -99,16 +99,16 @@ export class OptLiveFrontend extends OptFrontend {
   constructor(params) {
     super(params);
 
-    $('#legendDiv')
-      .append('<svg id="prevLegendArrowSVG"/> line that just executed')
-      .append('<p style="margin-top: 4px"><svg id="curLegendArrowSVG"/> next line to execute</p>');
+    $('#legendDiv_live')
+      .append('<svg id="prevLegendArrowSVG_live"/> line that just executed')
+      .append('<p style="margin-top: 4px"><svg id="curLegendArrowSVG_live"/> next line to execute</p>');
 
-    d3.select('svg#prevLegendArrowSVG')
+    d3.select('svg#prevLegendArrowSVG_live')
       .append('polygon')
       .attr('points', SVG_ARROW_POLYGON)
       .attr('fill', lightArrowColor);
 
-    d3.select('svg#curLegendArrowSVG')
+    d3.select('svg#curLegendArrowSVG_live')
       .append('polygon')
       .attr('points', SVG_ARROW_POLYGON)
       .attr('fill', darkArrowColor);
@@ -124,19 +124,19 @@ export class OptLiveFrontend extends OptFrontend {
 
 
     // TODO: eliminate redundancies with pytutor.ts
-    $("#jmpFirstInstr").click(() => {
+    $("#jmpFirstInstr_live").click(() => {
       if (this.myVisualizer) { this.myVisualizer.renderStep(0); }
     });
 
-    $("#jmpLastInstr").click(() => {
+    $("#jmpLastInstr_live").click(() => {
       if (this.myVisualizer) { this.myVisualizer.renderStep(this.myVisualizer.curTrace.length - 1); }
     });
 
-    $("#jmpStepBack").click(() => {
+    $("#jmpStepBack_live").click(() => {
       if (this.myVisualizer) { this.myVisualizer.stepBack(); }
     });
 
-    $("#jmpStepFwd").click(() => {
+    $("#jmpStepFwd_live").click(() => {
       if (this.myVisualizer) { this.myVisualizer.stepForward(); }
     });
 
@@ -166,10 +166,10 @@ export class OptLiveFrontend extends OptFrontend {
   toggleSyntaxError(x) {
     if (x) {
       this.hasSyntaxError = true;
-      $("#dataViz,#curInstr").addClass('dimmed'); // dim the visualization until we fix the error
+      $("#dataViz,#curInstr_live").addClass('dimmed'); // dim the visualization until we fix the error
     } else {
       this.hasSyntaxError = false;
-      $("#dataViz,#curInstr").removeClass('dimmed'); // un-dim the visualization
+      $("#dataViz,#curInstr_live").removeClass('dimmed'); // un-dim the visualization
       var s = this.pyInputAceEditor.getSession();
       s.clearAnnotations(); // remove any lingering syntax error labels in gutter
     }
@@ -204,27 +204,27 @@ export class OptLiveFrontend extends OptFrontend {
     var isLastInstr = myVisualizer.curInstr === (totalInstrs - 1);
     if (isLastInstr) {
       if (myVisualizer.promptForUserInput || myVisualizer.promptForMouseInput) {
-        $("#curInstr").html('<b><font color="' + brightRed + '">Enter user input:</font></b>');
+        $("#curInstr_live").html('<b><font color="' + brightRed + '">Enter user input:</font></b>');
       } else if (myVisualizer.instrLimitReached) {
-        $("#curInstr").html("Step limit reached");
+        $("#curInstr_live").html("Step limit reached");
       } else {
-        $("#curInstr").html("Done running (" + String(totalInstrs - 1) + " steps)");
+        $("#curInstr_live").html("Done running (" + String(totalInstrs - 1) + " steps)");
       }
     } else {
-      $("#curInstr").html("Step " + String(myVisualizer.curInstr + 1) + " of " + String(totalInstrs - 1));
+      $("#curInstr_live").html("Step " + String(myVisualizer.curInstr + 1) + " of " + String(totalInstrs - 1));
     }
 
     // handle raw user input
     // copied from pytutor.js -- TODO: integrate this code better
-    var ruiDiv = $('#rawUserInputDiv');
+    var ruiDiv = $('#rawUserInputDiv_live');
     if (isLastInstr && myVisualizer.params.executeCodeWithRawInputFunc &&
       myVisualizer.promptForUserInput) {
       ruiDiv.show();
-      ruiDiv.find('#userInputPromptStr').html(myVisualizer.userInputPromptStr);
-      ruiDiv.find('#raw_input_textbox').val('');
+      ruiDiv.find('#userInputPromptStr_live').html(myVisualizer.userInputPromptStr);
+      ruiDiv.find('#raw_input_textbox_live').val('');
 
       // first UNBIND handler so that we don't build up multiple click events
-      ruiDiv.find('#raw_input_submit_btn')
+      ruiDiv.find('#raw_input_submit_btn_live')
         .unbind('click')
         .click(() => {
           // issue a warning since it's really hard to get rawInputLst
@@ -234,7 +234,7 @@ export class OptLiveFrontend extends OptFrontend {
             alert("Warning: user inputs do NOT work well in live help/chat mode. We suggest you use the regular Python Tutor visualizer instead.");
           }
           */
-          var userInput = ruiDiv.find('#raw_input_textbox').val();
+          var userInput = ruiDiv.find('#raw_input_textbox_live').val();
           var myVisualizer = this.myVisualizer;
           // advance instruction count by 1 to get to the NEXT instruction
           myVisualizer.params.executeCodeWithRawInputFunc(userInput, myVisualizer.curInstr + 1);
@@ -317,14 +317,14 @@ export class OptLiveFrontend extends OptFrontend {
     var myVisualizer = this.myVisualizer;
     var prevVisualizer = this.prevVisualizer;
     assert(myVisualizer);
-    $("#pyOutputPane,#vcrControls,#curInstr").show();
+    $("#pyOutputPane,#vcrControls_live,#curInstr_live").show();
     this.doneExecutingCode();
 
     this.toggleSyntaxError(false);
 
     // set up execution slider, code inspired by pytutor.js:
     // TODO: eventually unify this code with pytutor.js to avoid duplication
-    var sliderDiv = $('#executionSlider');
+    var sliderDiv = $('#executionSlider_live');
     sliderDiv.slider({ min: 0, max: myVisualizer.curTrace.length - 1, step: 1 });
     //disable keyboard actions on the slider itself (to prevent double-firing of events)
     sliderDiv.find(".ui-slider-handle").unbind('keydown');
@@ -425,14 +425,14 @@ export class OptLiveFrontend extends OptFrontend {
           uh.push([args.myViz.curInstr, curTs]);
         }
 
-        $('#executionSlider').slider('value', this.myVisualizer.curInstr); // update slider
+        $('#executionSlider_live').slider('value', this.myVisualizer.curInstr); // update slider
         this.updateStepLabels();
 
         return [false];
       }
     );
 
-    $('#executionSlider').slider('value', myVisualizer.curInstr); // update slider
+    $('#executionSlider_live').slider('value', myVisualizer.curInstr); // update slider
     this.myVisualizer.redrawConnectors(); // to get everything aligned well
   }
 
@@ -595,12 +595,12 @@ export class OptLiveFrontend extends OptFrontend {
           if (this.myVisualizer.curTrace && this.myVisualizer.curTrace.length > 0) {
             this.finishSuccessfulExecution();
           } else {
-            $("#pyOutputPane,#vcrControls,#curInstr").show();
+            $("#pyOutputPane,#vcrControls_live,#curInstr_live").show();
             this.doneExecutingCode();
           }
         } catch (e) {
           // ExecutionVisualizer constructor failed — just show VCR controls
-          $("#pyOutputPane,#vcrControls,#curInstr").show();
+          $("#pyOutputPane,#vcrControls_live,#curInstr_live").show();
           this.doneExecutingCode();
         }
       } else {
@@ -743,7 +743,7 @@ export class OptLiveFrontend extends OptFrontend {
   updateOutputTogetherJsHandler(msg) {
     super.updateOutputTogetherJsHandler(msg); // do this first
     // then update slider at the end
-    $('#executionSlider').slider('value', this.myVisualizer.curInstr); // update slider
+    $('#executionSlider_live').slider('value', this.myVisualizer.curInstr); // update slider
     this.updateStepLabels();
   }
   */
