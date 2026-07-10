@@ -24,19 +24,19 @@
 
 /* copied from pytutor.css - TODO: integrate and merge together */
 /* VCR control buttons for stepping through execution */
-#vcrControls {
+#vcrControls, #vcrControls_live {
   margin-top: 15px;
   margin-bottom: 6px;
   /*width: 100%;*/
   text-align: center;
 }
 
-#vcrControls button {
+#vcrControls button, #vcrControls_live button {
   margin-left: 2px;
   margin-right: 2px;
 }
 
-#curInstr {
+#curInstr, #curInstr_live {
   /*
   margin-left: 4px;
   margin-right: 4px;
@@ -44,7 +44,7 @@
   text-align: center;
 }
 
-div#rawUserInputDiv {
+div#rawUserInputDiv, div#rawUserInputDiv_live {
   padding: 5px;
   width: 95%;
   margin: 5px auto;
@@ -82,7 +82,7 @@ button.surveyBtnBig {
 }
 
 /* copied from pytutor.css */
-div#legendDiv {
+div#legendDiv, div#legendDiv_live {
   margin-top: 8px;
   padding: 0px;
   text-align: left;
@@ -91,7 +91,8 @@ div#legendDiv {
   width: 500px;
 }
 
-#prevLegendArrowSVG, #curLegendArrowSVG {
+#prevLegendArrowSVG, #curLegendArrowSVG,
+#prevLegendArrowSVG_live, #curLegendArrowSVG_live {
   width: 18px;
   height: 10px;
 }
