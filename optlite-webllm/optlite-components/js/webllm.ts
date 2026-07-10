@@ -159,13 +159,19 @@ async function callOpenAIAPI(messages, onUpdate, onFinish, onError) {
             }, INACTIVITY_TIMEOUT_MS) as unknown as number;
         };
 
-        const response = await fetch(`${API_CONFIG.baseUrl}/chat/completions`, {
+        // When using the nginx reverse proxy (baseUrl ends with '/ai-proxy'),
+        // the API key is injected server-side by nginx. The browser never sees it.
+        const url = API_CONFIG.baseUrl.endsWith('/ai-proxy')
+            ? `${API_CONFIG.baseUrl}/chat/completions`
+            : `${API_CONFIG.baseUrl}/chat/completions`;
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 // Prefer SSE, but allow JSON fallback
                 'Accept': 'text/event-stream, application/json',
-                ...(API_CONFIG.apiKey && { 'Authorization': `Bearer ${API_CONFIG.apiKey}` })
+                // Only send key from client when NOT using the proxy
+                ...(API_CONFIG.baseUrl.endsWith('/ai-proxy') ? {} : (API_CONFIG.apiKey && { 'Authorization': `Bearer ${API_CONFIG.apiKey}` }))
             },
             body: JSON.stringify({
                 model: API_CONFIG.model,
@@ -420,7 +426,9 @@ function initializeErrorObserver() {
 
     const observer = new MutationObserver((mutations) => {
         mutations.forEach(() => {
-            const hasError = frontendErrorOutput.textContent?.trim() !== '';
+            const text = frontendErrorOutput.textContent?.trim() || '';
+            // Don't show Ask AI for transient "Running your code ..." messages
+            const hasError = text !== '' && !/^Running\s+your\s+code/.test(text);
             askAIButton.style.display = hasError ? 'block' : 'none';
             if (temperatureControl) {
                 temperatureControl.style.display = hasError ? 'block' : 'none';
@@ -447,7 +455,8 @@ function initializeErrorObserver() {
     });
 
     // Initial check
-    const hasError = frontendErrorOutput.textContent?.trim() !== '';
+    const initText = frontendErrorOutput.textContent?.trim() || '';
+    const hasError = initText !== '' && !/^Running\s+your\s+code/.test(initText);
     askAIButton.style.display = hasError ? 'block' : 'none';
     if (temperatureControl) {
         temperatureControl.style.display = hasError ? 'block' : 'none';

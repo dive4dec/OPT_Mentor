@@ -475,6 +475,12 @@ export class OptLiveFrontend extends OptFrontend {
     this.pyInputAceEditor = ace.edit('codeInputPane');
     var s = this.pyInputAceEditor.getSession();
 
+    // Add name attribute to ace's internal textarea to satisfy browser autofill audit
+    var aceTextarea = document.querySelector('#codeInputPane .ace_text-input');
+    if (aceTextarea) {
+      aceTextarea.setAttribute('name', 'ace_code_input');
+    }
+
     // disable extraneous indicators:
     s.setFoldStyle('manual'); // no code folding indicators
     s.getDocument().setNewLineMode('unix'); // canonicalize all newlines to unix format
@@ -581,6 +587,22 @@ export class OptLiveFrontend extends OptFrontend {
         } else {
           this.setFronendError(nullTraceErrorLst);
         }
+        // Always create a visualizer and show VCR controls, even on error.
+        // This allows the user to see the execution state up to the error point.
+        try {
+          this.prevVisualizer = this.myVisualizer;
+          this.myVisualizer = new ExecutionVisualizer(outputDiv, dataFromBackend, frontendOptionsObj);
+          if (this.myVisualizer.curTrace && this.myVisualizer.curTrace.length > 0) {
+            this.finishSuccessfulExecution();
+          } else {
+            $("#pyOutputPane,#vcrControls,#curInstr").show();
+            this.doneExecutingCode();
+          }
+        } catch (e) {
+          // ExecutionVisualizer constructor failed — just show VCR controls
+          $("#pyOutputPane,#vcrControls,#curInstr").show();
+          this.doneExecutingCode();
+        }
       } else {
         this.prevVisualizer = this.myVisualizer;
         this.myVisualizer = new ExecutionVisualizer(outputDiv, dataFromBackend, frontendOptionsObj);
@@ -637,7 +659,7 @@ export class OptLiveFrontend extends OptFrontend {
           let result: any = await asyncRun(codeToExec, this.rawInputLst, {});
           execCallback(JSON.parse(result.results))
         } catch (err) {
-          this.setFronendError(["Error: " + (err as Error).message]);
+          this.setFronendError([(err as Error).message], true);
           this.doneExecutingCode();
         }
       }
