@@ -108,24 +108,24 @@
 
               <button id="askAI" disabled>Ask AI</button>
 
-              <!-- Mode toggle and status (shared by both modes) -->
-              <div class="mode-controls" style="margin-top: 10px;">
-                <span id="mode-status" style="margin-right: 8px; font-weight: bold;">Local Mode</span>
-                <button id="toggle-api">Switch to API Mode</button>
-                <!-- Original Visualize button location (now moved into legendDiv):
-                <button id="visualizeBtn" class="smallBtn" type="button"  title="Open the visualize page with the code currently in the editor">Visualize</button>
-                -->
+              <!-- Compact status bar (always visible) -->
+              <div id="ai-status-bar" style="display: block; margin-top: 10px; padding: 6px 10px; background: #f0f7ff; border: 1px solid #d0e0ff; border-radius: 4px; font-size: 9pt;">
+                <button id="ai-edit-btn" class="smallBtn" type="button" style="margin-right: 8px; font-size: 8pt;">AI Tutor</button>
+                <span id="ai-status-text" style="color: #333;"></span>
               </div>
 
+              <!-- Mode toggle (shown only when AI Tutor is clicked) -->
+              <div class="mode-controls" id="mode-controls-div" style="margin-top: 10px; display: none;">
+                <span id="mode-status" style="margin-right: 8px; font-weight: bold;">Local Mode</span>
+                <button id="toggle-api">Switch to API Mode</button>
+              </div>
 
-
-              <!-- API configuration panel (visible only in API mode) -->
+              <!-- API configuration panel (shown only when AI Tutor is clicked in API mode) -->
               <div class="api-only api-panel" style="display: none; margin-top: 10px;">
-                <!-- API settings inputs; values are persisted in localStorage -->
                 <div class="api-config" style="border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
                   <div style="margin-bottom: 8px;">
                     <label for="api-url">API Server URL</label>
-                    <input type="text" id="api-url" placeholder="API server address" style="width: 100%; box-sizing: border-box;">
+                    <input type="text" id="api-url" placeholder="e.g., https://api.openai.com/v1" style="width: 100%; box-sizing: border-box;">
                   </div>
                   <div style="margin-bottom: 8px;">
                     <label for="api-key">API Key</label>
@@ -133,24 +133,24 @@
                   </div>
                   <div style="margin-bottom: 8px;">
                     <label for="api-model">Model Name</label>
-                    <input type="text" id="api-model" placeholder="" style="width: 100%; box-sizing: border-box;">
+                    <input type="text" id="api-model" placeholder="e.g., gpt-4o-mini" style="width: 100%; box-sizing: border-box;">
                   </div>
-                  <!-- reset buttons moved to the bottom of the page -->
+                  <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+                    <button id="api-cancel-btn" class="smallBtn" type="button">Cancel</button>
+                    <button id="api-confirm-btn" class="smallBtn" type="button" disabled>Confirm</button>
+                  </div>
                 </div>
               </div>
 
-              <!-- Temporarily hide step 1 and Pull Model button for local mode, but cannot delete, since webllm.ts needs to bind to the button-->
-    
-              <!-- <p class="local-only">Step 1: Initialize WebLLM and Download Model</p> -->
-    
-              <!-- Local-only controls; hidden when API mode is enabled -->
-              <div class="download-container local-only">
+              <!-- Local-only controls (shown only when AI Tutor is clicked in Local mode) -->
+              <div class="download-container local-only" style="display: none;">
                 <select id="model-selection" style="display: none;"></select>
-                <!-- Restore: remove style="display:none" to show Pull Model again -->
-                <button id="download" type="button" style="display: none;">Pull Model</button> 
+                <button id="download" type="button" style="display: none;">Confirm</button>
               </div>
-            
+
+              <!-- Model download status line (local mode only) -->
               <p id="download-status" class="hidden"></p>
+              <p id="model-status-line" class="local-only" style="display: none; font-size: 9pt; color: #666; margin-top: 4px;"></p>
 
           
       

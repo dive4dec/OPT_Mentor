@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-14
+
+### Added
+- **Flexible deployment at `/OPT_Mentor_`** — separate helm release
+  `opt-mentor-flex` (namespace `opt-mentor`) that lets users choose between
+  WebLLM (local) and API key (remote) via the AI Tutor config panel. The
+  original `/OPT_Mentor` deployment remains unchanged.
+  - `chart/values-flex.yaml` — helm values for the flexible deployment
+    (no API proxy, no mode lock, route `/OPT_Mentor_`)
+  - `Dockerfile` — `ARG INJECT_API_CONFIG` and `ARG API_HIDE_API_PANEL`
+    make API config injection configurable at build time
+  - `webpack.config.js` — `[contenthash:8]` in JS bundle filename prevents
+    stale browser cache across deployments
+
+### Changed
+- **AI Tutor config redesign** — config panel hidden by default; "AI Tutor"
+  button (renamed from "Configure", moved to left of status text) toggles
+  the panel. Confirm/Cancel hides the panel after applying/restoring. Mode
+  toggle stays inside the config panel.
+  - `live.html` — compact status bar, AI Tutor button, Confirm/Cancel
+    buttons, model-status-line, all config elements `display: none` by
+    default
+  - `webllm.ts` — `hideConfigPanel()` / `showConfigPanel()` (sync),
+    `updateStatusBar()`, Configure button as toggle, simplified
+    `updateUIElements()`
+- **"Current Mode:" prefix removed** from mode display — now just "Local
+  Mode" / "API Mode"
+
+### Removed
+- Dead code cleanup (-47 lines): `$("#send").click()`, redundant toggle
+  listener, `enforceSingleModelSetting()` IIFE, `loadAPIConfig()` input
+  echo, `updateModeDisplay()` on page load, duplicate `lock` declaration
+
 ## [0.2.0] - 2026-07-10
 
 ### Added

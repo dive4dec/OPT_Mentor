@@ -24,16 +24,19 @@ COPY --from=webllm-builder /app/opt-mentor/webllm-components/lib ../webllm-compo
 COPY webllm-components/package.json ../webllm-components/
 ARG PUBLIC_PATH=""
 ENV PUBLIC_PATH=${PUBLIC_PATH}
-ENV INJECT_API_CONFIG=true
+ARG INJECT_API_CONFIG="true"
+ENV INJECT_API_CONFIG=${INJECT_API_CONFIG}
 ENV API_INJECT_TARGET=define
 ARG API_BASE_URL=""
 ARG API_KEY=""
 ARG API_MODEL=""
 ARG SINGLE_MODE=""
+ARG API_HIDE_API_PANEL=""
 ENV API_BASE_URL=${API_BASE_URL}
 ENV API_KEY=${API_KEY}
 ENV API_MODEL=${API_MODEL}
 ENV SINGLE_MODE=${SINGLE_MODE}
+ENV API_HIDE_API_PANEL=${API_HIDE_API_PANEL}
 RUN pip3 install --break-system-packages -r optlite/requirements.txt \
     && python3 setup.py bdist_wheel -d dist \
     && npm run build:prod \

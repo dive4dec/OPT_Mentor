@@ -92,7 +92,7 @@ module.exports = {
     output: {
         path: __dirname + "/build/",
         ...(publicPath ? { publicPath } : {}),
-        filename: "[name].bundle.js",
+        filename: "[name].bundle.[contenthash:8].js",
         sourceMapFilename: "[file].map",
     },
 
