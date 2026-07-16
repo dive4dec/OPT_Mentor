@@ -86,13 +86,20 @@ module.exports = {
 
     entry: {
         'visualize': "./js/visualize.ts",
-        'opt-live': "./js/opt-live.ts"
+        'opt-live': "./js/opt-live.ts",
+        'optworker': "./js/pyodide/optworker.mjs"
     },
 
     output: {
         path: __dirname + "/build/",
         ...(publicPath ? { publicPath } : {}),
-        filename: "[name].bundle.[contenthash:8].js",
+        // Worker entry point gets a fixed filename (no hash) so it can be
+        // referenced at runtime; main bundles keep contenthash for cache-busting.
+        filename: (pathData) => {
+            return pathData.chunk.name === 'optworker'
+                ? 'optworker.bundle.js'
+                : '[name].bundle.[contenthash:8].js';
+        },
         sourceMapFilename: "[file].map",
     },
 

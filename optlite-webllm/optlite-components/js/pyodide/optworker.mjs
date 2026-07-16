@@ -1,4 +1,4 @@
-// web worker
+// Module worker — required by Pyodide v314+ (classic workers no longer supported)
 
 self.onmessage = async (event) => {
   // copy the context in worker's own "memory"
@@ -10,15 +10,16 @@ self.onmessage = async (event) => {
   try {
     let results;
     if (id < 0) { // initialize worker
-      // load pyodide from its url — indexURL must match the CDN folder or loadPackage("pydoc_data") can fail silently / 404.
-      const pyodideScript = self.pyodide;
-      importScripts(pyodideScript);
-      const indexURL = pyodideScript.replace(/\/[^/]*$/, "/");
+      // load pyodide from its url — indexURL must match the CDN folder or loadPackage can fail silently / 404.
+      const pyodideUrl = self.pyodide;
+      const indexURL = pyodideUrl.replace(/\/[^/]*$/, "/");
+      // Dynamic import the pyodide.js UMD bundle (it assigns loadPyodide to globalThis)
+      await import(/* webpackIgnore: true */ pyodideUrl);
       self.pyodide = await loadPyodide({ indexURL });
       await self.pyodide.loadPackage("micropip");
-      // In the 0.27.3 lockfile, package key is "pydoc-data" (import name is still pydoc_data).
-      // pydoc-data is not necessary for help(list), but need to add import pydoc_data for help('for') if self.pyodide.loadPackage("pydoc-data") is not used
-      // await self.pyodide.loadPackage("pydoc-data"); 
+      // pydoc_data is still in the distribution but needs to be explicitly loaded
+      // with loadPackage("pydoc_data") to use help('for') etc.
+      // await self.pyodide.loadPackage("pydoc_data");
       // fetch and install optlite from pypi
       results = await self.pyodide.runPythonAsync(`
       import micropip

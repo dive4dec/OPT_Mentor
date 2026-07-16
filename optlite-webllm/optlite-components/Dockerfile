@@ -19,13 +19,16 @@ RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python 3.12 from Ubuntu 24.04 repository
+# Install Python 3.14 from deadsnakes PPA (Ubuntu 24.04 ships 3.12)
 RUN apt-get update && \
-    apt-get install -y python3.12 python3.12-venv && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt-get update && \
+    apt-get install -y python3.14 python3.14-venv && \
     rm -rf /var/lib/apt/lists/*
 
 # Create isolated Python virtual environment inside image
-RUN python3.12 -m venv /opt/pyenv && \
+RUN python3.14 -m venv /opt/pyenv && \
     /opt/pyenv/bin/python -m ensurepip --upgrade
 
 # Set environment variables

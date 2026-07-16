@@ -42,19 +42,17 @@ jobs:
     
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Setup Node.js
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v7
       with:
         node-version: '22'
 
     - name: Setup Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
-        # Keep CI wheel builds on a tested-compatible Python version.
-        # TODO: Migrate from setup.py bdist_wheel to pyproject/build to reduce future Python/setuptools compatibility risks.
-        python-version: '3.12'
+        python-version: '3.14'
         cache: 'pip'
         
     - name: Install system dependencies
@@ -141,7 +139,7 @@ jobs:
           find optlite-webllm/optlite-components/build/ -type f | wc -l
 
       - name: Deploy to gh-pages branch
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: optlite-webllm/optlite-components/build

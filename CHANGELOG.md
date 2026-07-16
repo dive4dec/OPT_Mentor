@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Pyodide upgraded from v0.27.3 (Python 3.12) to v314.0.2 (Python 3.14)**
+  - `optworker.js` → `optworker.mjs` — Pyodide v314 dropped classic worker
+    support (`importScripts`); rewritten as an ES module worker using
+    dynamic `import()`
+  - `runner.ts` — worker created with `{ type: "module" }`; CDN URL updated
+  - CI and Dockerfiles updated to Python 3.14 for wheel builds
+  - optlite package bumped to 0.0.6
+  - GitHub Actions: `actions/checkout` v6→v7, `actions/setup-node` v6→v7,
+    `actions/setup-python` v6→v7, `peaceiris/actions-gh-pages` v3→v4
+    (fixes Node.js 20 deprecation warnings)
+
 ## [0.3.0] - 2026-07-14
 
 ### Added
