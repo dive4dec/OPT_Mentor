@@ -539,17 +539,21 @@ function hideConfigPanel() {
     if (modelStatusLine) modelStatusLine.style.display = 'none';
     const downloadStatus = document.getElementById("download-status");
     if (downloadStatus) downloadStatus.classList.add("hidden");
-    // Status bar stays visible
+    // Status bar stays visible — unless API_HIDE_API_PANEL is set (exam mode)
+    const w = (window as any) || {};
+    const hidePanel = (typeof __API_HIDE_API_PANEL__ !== 'undefined') ? (!!__API_HIDE_API_PANEL__) : (!!w.API_HIDE_API_PANEL);
     const statusBar = document.getElementById("ai-status-bar");
-    if (statusBar) statusBar.style.display = 'block';
-    updateStatusBar();
+    if (statusBar) statusBar.style.display = hidePanel ? 'none' : 'block';
+    if (!hidePanel) updateStatusBar();
 }
 
 /** Show config elements — called when Configure button is clicked */
 function showConfigPanel() {
-    // Status bar stays visible
+    // Status bar stays visible — unless API_HIDE_API_PANEL is set (exam mode)
+    const w = (window as any) || {};
+    const hidePanel = (typeof __API_HIDE_API_PANEL__ !== 'undefined') ? (!!__API_HIDE_API_PANEL__) : (!!w.API_HIDE_API_PANEL);
     const statusBar = document.getElementById("ai-status-bar");
-    if (statusBar) statusBar.style.display = 'block';
+    if (statusBar) statusBar.style.display = hidePanel ? 'none' : 'block';
 
     // Show mode controls
     const modeControls = document.getElementById("mode-controls-div");
@@ -871,6 +875,22 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedModel = modelSelect.value;
             updateModelStatusLine();
         });
+    }
+
+    // Hide AI Tutor config button when API_HIDE_API_PANEL is set (exam mode —
+    // students must not be able to change the API endpoint or model).
+    const w0 = (window as any) || {};
+    const hidePanelFlag = (typeof __API_HIDE_API_PANEL__ !== 'undefined') ? (!!__API_HIDE_API_PANEL__) : (!!w0.API_HIDE_API_PANEL);
+    if (hidePanelFlag) {
+        const aiStatusBar = document.getElementById("ai-status-bar");
+        if (aiStatusBar) aiStatusBar.style.display = 'none';
+        const editBtnHidden = document.getElementById("ai-edit-btn") as HTMLElement | null;
+        if (editBtnHidden) editBtnHidden.style.display = 'none';
+        const modeControlsDiv = document.getElementById("mode-controls-div");
+        if (modeControlsDiv) modeControlsDiv.style.display = 'none';
+        // Also hide the entire status bar container (button + status text)
+        const aiStatusBarContainer = aiStatusBar;
+        if (aiStatusBarContainer) aiStatusBarContainer.style.display = 'none';
     }
 
     // Bind edit button (toggle config panel)
