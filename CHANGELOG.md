@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-17
+
 ### Changed
 - **Pyodide upgraded from v0.27.3 (Python 3.12) to v314.0.2 (Python 3.14)**
   - `optworker.js` → `optworker.mjs` — Pyodide v314 dropped classic worker
@@ -18,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - GitHub Actions: `actions/checkout` v6→v7, `actions/setup-node` v6→v7,
     `actions/setup-python` v6→v7, `peaceiris/actions-gh-pages` v3→v4
     (fixes Node.js 20 deprecation warnings)
+
+### Fixed
+- **AI Tutor config panel hidden in exam mode** (`API_HIDE_API_PANEL=true`)
+  - `hideConfigPanel()` and `showConfigPanel()` now respect the
+    `__API_HIDE_API_PANEL__` build flag instead of always setting
+    `ai-status-bar` to `display: block`
+  - On init, `ai-status-bar`, `ai-edit-btn`, and `mode-controls-div` are
+    hidden when the flag is set — students cannot change the API endpoint
+    or model during exams
+  - `loadAPIConfig()` skips localStorage, `bindAPIInputsImmediate()` returns
+    early when the flag is set
 
 ## [0.3.0] - 2026-07-14
 
