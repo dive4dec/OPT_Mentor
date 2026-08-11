@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-11
+
+### Added
+- **API mode support for visualize (index.html) "Ask AI"** — the visualize
+  mode was hardcoded to WebLLM only; now mirrors the live mode's API/WebLLM
+  branching via build-time constants (`__API_DEFAULT_MODE__`,
+  `__API_BASE_URL__`, `__API_MODEL__`, `__SINGLE_MODE__`)
+  - `visualize-ai.ts` — new `callOpenAIAPI()` function with SSE streaming,
+    same-origin proxy path support, and `SINGLE_MODE` lock enforcement
+  - In API mode, the WebLLM model download is skipped entirely and the Ask
+    AI button is enabled immediately
+  - `Dockerfile` — new `API_DEFAULT_MODE` ARG/ENV passthrough for webpack
+  - `Makefile` (dive-deploy) — `--build-arg API_DEFAULT_MODE=api` added to
+    `opt-mentor-push` and `opt-cpp-push` targets
+
+### Fixed
+- **nginx DNS resolver hardcoded to wrong IP** — `resolver 10.96.0.1`
+  (default k8s DNS) replaced with `${NGINX_LOCAL_RESOLVERS}`, populated
+  dynamically from `/etc/resolv.conf` by the nginx image's built-in
+  `15-local-resolvers.envsh` entrypoint script
+  - Activated via `NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1` env var in Helm
+    values
+  - Fixes 504 Bad Gateway on API proxy in non-default DNS clusters (e.g.
+    microk8s where kube-dns is at 10.152.183.10, not 10.96.0.1)
+
 ## [0.4.0] - 2026-07-17
 
 ### Changed

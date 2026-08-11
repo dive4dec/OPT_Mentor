@@ -1,9 +1,41 @@
+// Optional build-time constants (injected when API_INJECT_TARGET === 'define')
+declare const __API_BASE_URL__: string | undefined;
+declare const __API_KEY__: string | undefined;
+declare const __API_MODEL__: string | undefined;
+declare const __API_DEFAULT_MODE__: string | undefined;
+declare const __SINGLE_MODE__: string | undefined;
+
 import * as webllm from "../../webllm-components";
 
 type VisualizeAIInitParams = {
   getCode: () => string;
   getMode: () => string;
 };
+
+/*************** Mode Lock Helper ***************/
+function getSingleModelSetting(): 'local' | 'api' | '' {
+    const w: any = (window as any) || {};
+    const raw: any = (typeof __SINGLE_MODE__ !== 'undefined') ? __SINGLE_MODE__ : w.SINGLE_MODE;
+    const val = (raw || '').toString().toLowerCase();
+    if (val === 'local' || val === 'api') return val as 'local' | 'api';
+    return '';
+}
+
+/*************** API Configuration ***************/
+const API_CONFIG = {
+    enabled: (typeof __API_DEFAULT_MODE__ !== 'undefined' && __API_DEFAULT_MODE__ === 'api') ? true : false,
+    baseUrl: (typeof __API_BASE_URL__ !== 'undefined') ? __API_BASE_URL__ : "",
+    apiKey: (typeof __API_KEY__ !== 'undefined') ? __API_KEY__ : "",
+    model:  (typeof __API_MODEL__ !== 'undefined') ? __API_MODEL__ : ""
+};
+
+// Enforce SINGLE_MODE lock at init
+const lock = getSingleModelSetting();
+if (lock === 'api') {
+    API_CONFIG.enabled = true;
+} else if (lock === 'local') {
+    API_CONFIG.enabled = false;
+}
 
 const messages: any[] = [
   {
@@ -14,7 +46,7 @@ const messages: any[] = [
 
 const availableModels = webllm.prebuiltAppConfig.model_list.map((m) => m.model_id);
 const CHAT_MAX_OUTPUT_TOKENS = 512;
-const CHAT_STOP_SEQUENCES = ["<|endoftext|>", "<|im_end|>"];
+const CHAT_STOP_SEQUENCES = ["</s>", "<|im_end|>"];
 
 const engine = new webllm.MLCEngine();
 let selectedModel = "sft_model_1.5B-q4f16_1-MLC (Hugging Face)";
@@ -67,7 +99,8 @@ function hasFrontendError(): boolean {
 }
 
 function shouldShowAskButton(getMode: () => string): boolean {
-  return getMode() === "ai_display" && isEngineReady && hasFrontendError();
+  const ready = API_CONFIG.enabled || isEngineReady;
+  return getMode() === "ai_display" && ready && hasFrontendError();
 }
 
 function setPanelVisibility(getMode: () => string) {
@@ -122,10 +155,119 @@ function buildQuestion(code: string, frontendError: string): string {
     "  ```  ## Task  Ask guiding questions that help me discover the mistake.";
 }
 
-async function sendAskAI(question: string) {
+/*************** API Calling Function ***************/
+async function callOpenAIAPI(question: string) {
   const output = getEl<HTMLElement>("viz-message-out");
   const stats = getEl<HTMLElement>("viz-chat-stats");
   if (!output || !stats) {
+    return;
+  }
+
+  messages.length = 1;
+  messages.push({ content: question, role: "user" });
+
+  output.classList.remove("hidden");
+  output.innerText = "AI is thinking...";
+  stats.classList.add("hidden");
+  stats.textContent = "";
+
+  try {
+    // When using the nginx reverse proxy (baseUrl ends with /ai-proxy),
+    // the API key is injected server-side by nginx.
+    const isProxy = API_CONFIG.baseUrl.endsWith('/ai-proxy');
+    const url = isProxy
+      ? API_CONFIG.baseUrl + '/chat/completions'
+      : `${API_CONFIG.baseUrl}/chat/completions`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream, application/json',
+        ...( !isProxy && API_CONFIG.apiKey && { 'Authorization': `Bearer ${API_CONFIG.apiKey}` }),
+      },
+      body: JSON.stringify({
+        model: API_CONFIG.model,
+        messages: messages,
+        stream: true,
+        temperature: 1.0,
+        top_p: 1,
+        max_tokens: CHAT_MAX_OUTPUT_TOKENS,
+        stop: CHAT_STOP_SEQUENCES,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    let fullResponse = '';
+
+    if (contentType.includes('text/event-stream')) {
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line || line.startsWith(':')) continue;
+          if (!line.startsWith('data:')) continue;
+
+          const data = line.slice(5).trim();
+          if (data === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (delta) {
+              fullResponse += delta;
+              output.innerText = "AI Response:\n" + formatAIResponse(fullResponse).replace(/\?/g, '?\n');
+            }
+          } catch {
+            // Ignore non-JSON heartbeats
+          }
+        }
+      }
+    } else {
+      // Non-streaming JSON fallback
+      const data = await response.json();
+      fullResponse =
+        data.choices?.[0]?.message?.content ??
+        data.choices?.[0]?.text ??
+        data.message?.content ??
+        data.response ??
+        '';
+    }
+
+    output.innerText = "AI Response:\n" + formatAIResponse(fullResponse).replace(/\?/g, '?\n');
+  } catch (err) {
+    output.innerText = "Error: " + String(err);
+  }
+}
+
+async function sendAskAI(question: string) {
+  const output = getEl<HTMLElement>("viz-message-out");
+  if (!output) {
+    return;
+  }
+
+  // API mode: use the reverse proxy
+  if (API_CONFIG.enabled) {
+    return callOpenAIAPI(question);
+  }
+
+  // Local WebLLM mode
+  const stats = getEl<HTMLElement>("viz-chat-stats");
+  if (!stats) {
     return;
   }
 
@@ -137,9 +279,9 @@ async function sendAskAI(question: string) {
 
   messages.length = 1;
   messages.push({ content: question, role: "user" });
-  
+
   console.log("[VisualizeAI] Messages before sending:", JSON.parse(JSON.stringify(messages)));
-  
+
   output.classList.remove("hidden");
   output.innerText = "AI is thinking...";
   stats.classList.add("hidden");
@@ -171,7 +313,7 @@ async function sendAskAI(question: string) {
     const finalMessage = await engine.getMessage();
 
     console.log("[VisualizeAI] Raw model response:", finalMessage);
-    
+
     output.innerText = "AI Response:\n" + formatAIResponse(finalMessage).replace(/\?/g, '?\n');
     if (usage && usage.prompt_tokens && usage.extra) {
       stats.classList.remove("hidden");
@@ -226,6 +368,14 @@ export function initVisualizeAI(params: VisualizeAIInitParams) {
   window.addEventListener("hashchange", () => {
     setPanelVisibility(params.getMode);
   });
+
+  // In API mode, no model download needed — enable Ask AI immediately
+  if (API_CONFIG.enabled) {
+    setStatusText("Using server AI (API mode).", false);
+    askAIButton.disabled = false;
+    setPanelVisibility(params.getMode);
+    return;
+  }
 
   // Auto-load local model on init only if WebGPU is available
   if (availableModels.length > 0 && ('gpu' in navigator)) {
