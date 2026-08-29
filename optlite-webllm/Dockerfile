@@ -44,6 +44,15 @@ RUN pip3 install --break-system-packages -r optlite/requirements.txt \
     && npm run build:prod \
     && test -f build/index.html \
     && test -f build/live.html
+# Pre-compress the large JS bundles for nginx gzip_static (served as <file>.gz
+# with Content-Encoding: gzip, zero runtime CPU). ~6 MB raw -> ~2.6 MB on the
+# wire. Webpack names the big bundles "[name].bundle.[contenthash:8].js" (hash
+# between .bundle. and .js), so match *.bundle*.js — NOT *.bundle.js (that only
+# matches the hash-less optworker.bundle.js and would skip the big bundles).
+# nginx falls back to the raw file if a client can't accept gzip.
+RUN cd build \
+    && for f in *.bundle*.js; do [ -f "$f" ] && gzip -1 -k -f "$f"; done \
+    && ls -la
 
 # ── Stage 3: nginx serving static files ──
 FROM nginx:1.29-alpine3.23

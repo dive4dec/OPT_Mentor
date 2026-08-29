@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-08-29
+
+### Added
+- **Site favicon** — `optlite.ico` is now bundled and served; `index.html`,
+  `live.html` and `visualize.html` emit `<link rel="shortcut icon">` pointing at
+  it (absolute `/OPT_Mentor/optlite.ico` under socratic, relative `optlite.ico`
+  under GitHub Pages). Previously all three pages fell back to `<link
+  rel="icon" href="data:,">` (no favicon).
+- **`gzip_static` for the JS bundles** — the build now pre-compresses every
+  `*.bundle*.js` (webpack names the big bundles `[name].bundle.[contenthash].js`),
+  and nginx serves the `.gz` sibling with `Content-Encoding: gzip` (zero runtime
+  CPU; falls back to the raw file for non-gzip clients). The two ~6.3 MB bundles
+  now transfer at ~2.6 MB each on socratic (12.6 MB → 5.1 MB total, −59%).
+  GitHub Pages already compresses/brotlis static assets, so this only changes
+  the socratic nginx path.
+
 ## [0.5.0] - 2026-08-11
 
 ### Added

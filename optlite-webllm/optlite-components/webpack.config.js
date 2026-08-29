@@ -40,6 +40,7 @@ module.exports = {
       }),
       new HtmlWebpackPlugin({
         filename: "index.html",
+        favicon: __dirname + "/optlite.ico",
         title: 'Visualize Python Code Execution',
         chunks: ['visualize'],
         template: './js/template/visualize.html',
@@ -48,6 +49,7 @@ module.exports = {
       // Same app as index.html; keeps permalinks and openLiveModeUrl() working as live.html#...
       new HtmlWebpackPlugin({
         filename: "live.html",
+        favicon: __dirname + "/optlite.ico",
         title: 'Live Python Programming Mode',
         chunks: ['opt-live'],
         template: './js/template/live.html',
@@ -55,6 +57,7 @@ module.exports = {
       }),
       new HtmlWebpackPlugin({
         filename: "visualize.html",
+        favicon: __dirname + "/optlite.ico",
         title: 'Visualize Python Code Execution',
         chunks: ['visualize'],
         template: './js/template/visualize.html',
