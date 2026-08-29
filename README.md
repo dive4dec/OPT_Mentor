@@ -276,8 +276,10 @@ Make targets (run from `~/dive-deploy`):
    without the env var, `envsubst` leaves a literal placeholder and the pod
    CrashLoops.
 3. **Never bake secrets into this public repo.** The API key lives only in the
-   K8s secret (and the private parent repo's values). See the security note in
-   *Potential improvements* for a current leak to fix.
+   K8s secret (and the private parent repo's values). The GitHub Pages build is
+   deliberately **local/WebLLM** with empty `API_*` values — see the
+   `INJECT_API_CONFIG` note in
+   [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
 4. Push order: **submodule first** (`git push origin main` + tag), then the
    parent `dive-deploy` commit that advances the gitlink.
 
@@ -387,13 +389,6 @@ must not regress.
 
 ## Potential improvements
 
-- **Fix the secret in the public build.** `.github/workflows/deploy.yml`
-  currently carries a **hardcoded `API_KEY` and a course-server `API_BASE_URL`
-  in plaintext** (used when `INJECT_API_CONFIG=true`). This repo is public, so
-  that is a live credential + internal-host leak. The Pages build should use
-  `INJECT_API_CONFIG=false` / `SINGLE_MODE=local` (no key at all), and the
-  leaked key should be **rotated immediately**. (Tracked separately — not
-  reproduced here.)
 - **Stream larger / better models.** The static `ai-model` CDN already serves
   weights; pairing it with a small fine-tune refresh pipeline would let us
   improve the Socratic model without a full re-release.

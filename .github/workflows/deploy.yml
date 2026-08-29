@@ -19,25 +19,31 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # # Toggle whether to inject API config at build time
-      # INJECT_API_CONFIG: ${{ inputs.inject_api_config || 'false' }}
-      # # Where to inject
-      # API_INJECT_TARGET: ${{ inputs.api_inject_target || 'window' }}
-      # # Values used when INJECT_API_CONFIG is true (can also come from secrets)
-      # API_BASE_URL: ${{ inputs.api_base_url || secrets.API_BASE_URL }}
-      # API_KEY: ${{ inputs.api_key || secrets.API_KEY }}
-      # API_MODEL: ${{ inputs.api_model || secrets.API_MODEL }}
-      # # Hide API config panel on UI (still keeps mode toggle)
-      # API_HIDE_API_PANEL: ${{ inputs.api_hide_api_panel || 'false' }}
-
-      SINGLE_MODE: 'local' # 'local' or 'api' or ''; empty means allow the switching of the two modes；The method for passing this value is also determined by API_INJECT_TARGET.
-      INJECT_API_CONFIG: 'true'         # whether to inject API information here
-      API_INJECT_TARGET: 'define'   # or 'window'; 'define' means information injected to js, 'window' means injected to html source file with windowVars
-      API_BASE_URL: 'https://dive.cs.cityu.edu.hk/ai-test/v1'
-      API_KEY: 'apikey123456'           # be care
-      API_MODEL: 'test'
-      # leave API_HIDE_API_PANEL blank, and then INJECT_API_CONFIG will decide whether hide the api panel; otherwise the API information from localStorage (if not empty) will shadow the injection with windowVar
-      API_HIDE_API_PANEL: ''        # whether to hide the api panel
+      # GitHub Pages is a PUBLIC, serverless site: in-browser WebLLM only, no
+      # server LLM. NEVER hardcode a real API key or course-server URL here —
+      # anything set in this file is baked into the published JS bundle and
+      # anyone can read it out of the browser.
+      #
+      # SINGLE_MODE=local locks the site to WebLLM (in-browser) mode.
+      # INJECT_API_CONFIG stays 'true' on purpose: the build only defines the
+      # __SINGLE_MODE__ constant inside the "inject API" block, so we keep it
+      # on to preserve the locked-local behavior — but every API_* value below
+      # is EMPTY, so no key / base URL / model is published. (Empty __API_KEY__
+      # / __API_BASE_URL__ are inert in local mode.)
+      #
+      # To ship a server-LLM build instead, set SINGLE_MODE=api and read the
+      # API_* values from GitHub secrets — e.g.
+      #   API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      #   API_KEY: ${{ secrets.API_KEY }}
+      # Never commit real values.
+      SINGLE_MODE: 'local'      # 'local' | 'api' | '' (empty = allow switching)
+      INJECT_API_CONFIG: 'true' # keeps __SINGLE_MODE__ defined; see note above
+      API_INJECT_TARGET: 'define'   # 'define' -> into JS; 'window' -> into HTML windowVars
+      API_BASE_URL: ''            # EMPTY: no course-server URL in the public bundle
+      API_KEY: ''                 # EMPTY: no secret in the public bundle
+      API_MODEL: ''               # EMPTY
+      # blank: INJECT_API_CONFIG decides panel visibility (hidden in local mode)
+      API_HIDE_API_PANEL: ''
 
     
     steps:
