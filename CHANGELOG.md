@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.2] - 2026-08-31
 
 ### Fixed
+- **Live mode: AI answer no longer disappears when scrubbing the execution
+  slider** — `#frontendErrorOutput` is rewritten on every step (the exception
+  step shows the error, all other steps clear it), and the AI-box observer
+  used to treat that momentary empty state as "clear the answer", wiping
+  `#message-out` and `#chat-stats` on every scrub. The answer now resets only
+  on a genuine new execution (the transient "Running your code ..." signal),
+  so it survives slider scrubbing and is still there when you step back —
+  matching the display/visualize page. The Ask AI button stays visible for the
+  whole AI box whenever an answer is on screen.
 - **Ask AI now cites the correct line numbers** — the user prompt sends the
   code with explicit 1-based line numbers (matching the editor gutter) inside
   a properly-formed 4-backtick fence, and instructs the model that the numbers

@@ -478,29 +478,54 @@ function initializeErrorObserver() {
         return;
     }
 
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach(() => {
-            const text = frontendErrorOutput.textContent?.trim() || '';
-            // Don't show Ask AI for transient "Running your code ..." messages
-            // (uses &nbsp; which are non-breaking spaces, so check with regex)
-            const hasError = text !== '' && !/^Running\s+your\s+code/.test(text);
-            askAIButton.style.display = hasError ? 'block' : 'none';
-            if (temperatureControl) {
-                temperatureControl.style.display = hasError ? 'block' : 'none';
+    // The error text is rewritten on EVERY execution step (opt-live.ts): the
+    // exception step shows the message, every other step clears it. So it
+    // flashes empty while the student scrubs the execution slider. We must NOT
+    // treat a scrubbed-to-empty error as "reset the AI box" — the old code
+    // wiped #message-out here, destroying the current answer on every scrub
+    // (and it stayed gone when scrubbing back).
+    //
+    // The one genuine "start over" signal is the transient
+    // "Running your code ..." text, which opt-live.ts writes whenever a new
+    // execution begins. We clear the answer ONLY on that signal.
+    //
+    // This mirrors the display/visualize page: its persistent error element
+    // never empties on a step change, so its AI response (and Ask AI button)
+    // survive slider scrubbing.
+    const responseShowing = () =>
+        !!messageOut && !messageOut.classList.contains('hidden');
+
+    function updateAiBox(text: string) {
+        const isRunning = /^Running\s+your\s+code/.test(text);
+        const hasError = text !== '' && !isRunning;
+
+        if (isRunning) {
+            // A brand-new execution invalidates any prior answer — reset it.
+            askAIButton.style.display = 'none';
+            if (temperatureControl) temperatureControl.style.display = 'none';
+            if (chatStats) {
+                chatStats.classList.add('hidden');
+                chatStats.textContent = '';
             }
-            
-            if (!hasError) {
-                // Clear and hide message-out and chat-stats when error is cleared
-                if (chatStats) {
-                    chatStats.classList.add('hidden');
-                    chatStats.textContent = '';
-                }
-                if (messageOut) {
-                    messageOut.classList.add('hidden');
-                    messageOut.textContent = '';
-                }
+            if (messageOut) {
+                messageOut.classList.add('hidden');
+                messageOut.textContent = '';
             }
-        });
+            return;
+        }
+
+        // Show Ask AI when there's an error to ask about, OR when an answer is
+        // already on screen (so the whole AI box stays on non-error steps once
+        // an answer exists). We deliberately do NOT clear the answer here —
+        // scrubs must not wipe it; it is only reset on a new run above.
+        const showBox = hasError || responseShowing();
+        askAIButton.style.display = showBox ? 'block' : 'none';
+        if (temperatureControl) temperatureControl.style.display = showBox ? 'block' : 'none';
+    }
+
+    const observer = new MutationObserver(() => {
+        const text = frontendErrorOutput.textContent?.trim() || '';
+        updateAiBox(text);
     });
 
     observer.observe(frontendErrorOutput, {
@@ -510,12 +535,7 @@ function initializeErrorObserver() {
     });
 
     // Initial check
-    const initText = frontendErrorOutput.textContent?.trim() || '';
-    const initHasError = initText !== '' && !/^Running\s+your\s+code/.test(initText);
-    askAIButton.style.display = initHasError ? 'block' : 'none';
-    if (temperatureControl) {
-        temperatureControl.style.display = initHasError ? 'block' : 'none';
-    }
+    updateAiBox(frontendErrorOutput.textContent?.trim() || '');
 }
 
 /*************** Mode Switching Functions ***************/
