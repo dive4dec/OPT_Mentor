@@ -25,6 +25,24 @@
 
 <body>
 
+  <!-- Visualize mode: left-align #pyInputPane so it lines up with the
+       left-aligned step pane (#pyOutputPane) and AI panel below it. The
+       shared opt-frontend.css centers it (margin-left/right:auto); that
+       centering is what the live page wants, but on the visualize page it
+       made the code pane drift to the center while the other two stayed
+       left. This override is scoped to this template only, so live.html is
+       unaffected.
+       Note: opt-frontend.css is injected by style-loader at RUNTIME (after
+       this <style>), so a plain #pyInputPane rule would lose on source
+       order. We therefore raise specificity (body #pyInputPane) so this
+       wins regardless of injection order — no !important needed. -->
+  <style>
+    body #pyInputPane {
+      margin-left: 0;
+      margin-right: 0;
+    }
+  </style>
+
 
 
   <div id="pyInputPane">

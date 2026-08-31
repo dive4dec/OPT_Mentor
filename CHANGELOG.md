@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Visualize mode: the code pane (`#pyInputPane`) is now left-aligned**, so
+  it lines up with the step pane (`#pyOutputPane`) and the AI panel below it
+  — previously it was centered while the two stayed left. Scoped to the
+  visualize template only; the live page keeps its centered code pane.
+
 ### Removed
 - **The "(UNSUPPORTED FEATURES)" tag no longer appears after C++ error
   messages** in the live and display/visualize error paths. It was a leftover
