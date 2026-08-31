@@ -18,7 +18,7 @@ require('./lib/jquery.ba-dotimeout.min.js');
 
 // need to directly import the class for type checking to work
 import { ExecutionVisualizer, assert, htmlspecialchars } from './pytutor';
-import { nullTraceErrorLst, unsupportedFeaturesStr } from './footer-html';
+import { nullTraceErrorLst } from './footer-html';
 // import { HostConfig } from './config/HostConfig'
 import { asyncRun } from './pyodide/runner';
 
@@ -157,8 +157,11 @@ export abstract class AbstractBaseFrontend {
   getAppState() { return {}; } // NOP -- subclasses need to override
 
   setFronendError(lines, ignoreLog = false) {
-    $("#frontendErrorOutput").html(lines.map(htmlspecialchars).join('<br/>') +
-      (ignoreLog ? '' : '<p/>(' + unsupportedFeaturesStr + ')'));
+    // NOTE: the original OnlinePythonTutor appended an "(UNSUPPORTED
+    // FEATURES)" tag here for its server-side C compiler's known-limitations
+    // list. This build runs in-browser WASM (xeus-cpp) — no server, no such
+    // list — so the tag was dropped as noise.
+    $("#frontendErrorOutput").html(lines.map(htmlspecialchars).join('<br/>'));
 
     // log it to the server as well (unless ignoreLog is on)
     if (!ignoreLog) {

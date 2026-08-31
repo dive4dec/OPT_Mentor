@@ -53,7 +53,7 @@ import { OptFrontend } from './opt-frontend';
 import { ExecutionVisualizer, assert, brightRed, darkArrowColor, lightArrowColor, SVG_ARROW_POLYGON, htmlspecialchars } from './pytutor';
 import { allTabsRE } from './opt-frontend';
 import { asyncRun } from './pyodide/runner';
-import { nullTraceErrorLst, unsupportedFeaturesStr } from './footer-html';
+import { nullTraceErrorLst } from './footer-html';
 import * as d3 from 'd3';
 // just punt and use global script dependencies
 require("script-loader!./lib/ace/src-min-noconflict/ace.js");
@@ -249,11 +249,11 @@ export class OptLiveFrontend extends OptFrontend {
       curEntry.event === 'uncaught_exception') {
       assert(curEntry.exception_msg);
       if (curEntry.exception_msg == "Unknown error") {
-        $("#frontendErrorOutput").html('Unknown error: ' + unsupportedFeaturesStr);
+        $("#frontendErrorOutput").html('Unknown error');
 
       } else {
-        $("#frontendErrorOutput").html(htmlspecialchars(curEntry.exception_msg) + '(' + unsupportedFeaturesStr + ')');
-        
+        $("#frontendErrorOutput").html(htmlspecialchars(curEntry.exception_msg));
+
       }
 
       if (myVisualizer.curLineNumber) {
@@ -263,7 +263,7 @@ export class OptLiveFrontend extends OptFrontend {
         this.allMarkerIds.push(markerId);
       }
     } else if (myVisualizer.instrLimitReached) {
-      $("#frontendErrorOutput").html(htmlspecialchars(myVisualizer.instrLimitReachedWarningMsg) + '(' + unsupportedFeaturesStr + ')');
+      $("#frontendErrorOutput").html(htmlspecialchars(myVisualizer.instrLimitReachedWarningMsg));
     } else {
       $("#frontendErrorOutput").html(''); // clear it
     }
