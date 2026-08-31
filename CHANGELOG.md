@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-08-31
+
+### Fixed
+- **Ask AI now cites the correct line numbers** — the user prompt sends the
+  code with explicit 1-based line numbers (matching the editor gutter) inside
+  a properly-formed 4-backtick fence, and instructs the model that the numbers
+  "EXACTLY match the line numbers in the user's editor" and to never
+  re-derive line counts from unnumbered source. The old prompt sent unnumbered
+  code, forcing the model to count lines itself.
+
+### Changed
+- **Shared prompt module** — new `js/ai-prompt.ts` is the single source of
+  truth for the Ask AI system prompt and question format. Both the visualize
+  page (`visualize-ai.ts`) and the live page (`webllm.ts`) now call
+  `buildAiQuestion()` / `getAiSystemPrompt()` so they can't drift apart.
+  Defaults are Python; `AI_SYSTEM_PROMPT` / `AI_CODE_LANG` build args (new,
+  defaulting to empty = Python defaults) allow per-deployment overrides.
+- **Model list hidden in API mode** — with a fixed server-side model there
+  is nothing to pick, so the model `<select>`, Pull Model button, and local
+  status line are hidden in API builds (mirrors the live page).
+- `CHAT_MAX_OUTPUT_TOKENS` raised 512 → 2048 for the API path: the ai-test
+  backend is a reasoning model that spends output tokens on
+  `reasoning_content` before the final answer.
+- Ask-AI panel MutationObserver now watches only the error panes
+  (`#frontendErrorOutput`, `#pyOutputPane`) instead of all of
+  `document.body` — previously it fired on every keystroke and every
+  streamed token.
+- nginx `ai-proxy` timeouts raised (read/send 120s → 300s) and the ingress
+  now carries matching `proxy-read/send-timeout: 300` annotations, so long
+  LLM streams aren't cut mid-response.
+
 ## [0.5.1] - 2026-08-29
 
 ### Added

@@ -18,6 +18,10 @@ const windowVars = (injectApi && injectTarget === 'window') ? {
   ...(process.env.API_MODEL ? { API_MODEL: String(process.env.API_MODEL).trim() } : {}),
   API_HIDE_API_PANEL: hideApiPanel,
   ...(process.env.SINGLE_MODE ? { SINGLE_MODE: String(process.env.SINGLE_MODE).trim().toLowerCase() } : {}),
+  // Ask AI prompt overrides — only injected when set; the TS module
+  // (js/ai-prompt.ts) falls back to the Python defaults when absent.
+  ...(process.env.AI_SYSTEM_PROMPT ? { AI_SYSTEM_PROMPT: String(process.env.AI_SYSTEM_PROMPT).trim() } : {}),
+  ...(process.env.AI_CODE_LANG ? { AI_CODE_LANG: String(process.env.AI_CODE_LANG).trim() } : {}),
 } : undefined;
 
 const defineReplacements = {};
@@ -28,6 +32,9 @@ if (injectApi && injectTarget === 'define') {
   defineReplacements.__API_DEFAULT_MODE__ = JSON.stringify(process.env.API_DEFAULT_MODE || '');
   defineReplacements.__API_HIDE_API_PANEL__ = JSON.stringify(hideApiPanel);
   defineReplacements.__SINGLE_MODE__ = JSON.stringify((process.env.SINGLE_MODE || '').toLowerCase());
+  // Ask AI prompt overrides — empty string = TS module uses Python defaults.
+  defineReplacements.__AI_SYSTEM_PROMPT__ = JSON.stringify(process.env.AI_SYSTEM_PROMPT || '');
+  defineReplacements.__AI_CODE_LANG__ = JSON.stringify(String(process.env.AI_CODE_LANG || '').trim());
 }
 
 module.exports = {

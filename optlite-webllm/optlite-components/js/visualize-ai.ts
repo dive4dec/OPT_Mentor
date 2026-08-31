@@ -6,6 +6,7 @@ declare const __API_DEFAULT_MODE__: string | undefined;
 declare const __SINGLE_MODE__: string | undefined;
 
 import * as webllm from "../../webllm-components";
+import { getAiSystemPrompt, buildAiQuestion } from "./ai-prompt";
 
 type VisualizeAIInitParams = {
   getCode: () => string;
@@ -39,13 +40,16 @@ if (lock === 'api') {
 
 const messages: any[] = [
   {
-    content: "You are a Python tutor. Respond ONLY with Socratic-style hints: short, guiding QUESTIONS (no solutions, no code, no imperative fixes). At most 100 words.",
+    content: getAiSystemPrompt(),
     role: "system",
   },
 ];
 
 const availableModels = webllm.prebuiltAppConfig.model_list.map((m) => m.model_id);
-const CHAT_MAX_OUTPUT_TOKENS = 512;
+// Raised from 512: the ai-test backend is a reasoning model — it spends
+// output tokens thinking (reasoning_content) before emitting the final
+// content, so small caps starve the actual answer.
+const CHAT_MAX_OUTPUT_TOKENS = 2048;
 const CHAT_STOP_SEQUENCES = ["</s>", "<|im_end|>"];
 
 const engine = new webllm.MLCEngine();
@@ -149,11 +153,8 @@ async function initializeWebLLMEngine() {
   }
 }
 
-function buildQuestion(code: string, frontendError: string): string {
-  const cleanedError = (frontendError || "").replace("(UNSUPPORTED FEATURES)", "").trim();
-  return "## Code ```python  " + code + "  ```  ## Error  ```text  " + cleanedError +
-    "  ```  ## Task  Ask guiding questions that help me discover the mistake.";
-}
+// (buildQuestion removed — superseded by buildAiQuestion() in ai-prompt.ts,
+// which sends the code with explicit line numbers matching the editor.)
 
 /*************** API Calling Function ***************/
 async function callOpenAIAPI(question: string) {
@@ -356,22 +357,44 @@ export function initVisualizeAI(params: VisualizeAIInitParams) {
   askAIButton.addEventListener("click", () => {
     const code = params.getCode();
     const errorText = getCurrentErrorText();
-    const question = buildQuestion(code, errorText);
+    const question = buildAiQuestion(code, errorText);
     sendAskAI(question);
   });
 
-  const observer = new MutationObserver(() => {
-    setPanelVisibility(params.getMode);
-  });
-  observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+  // Watch only the elements the panel visibility actually depends on
+  // (error panes) instead of the whole document — a body-level observer
+  // fires on every keystroke and every streamed AI token.
+  const errorTargets: Element[] = [];
+  const fe = getEl<HTMLElement>("frontendErrorOutput");
+  const out = getEl<HTMLElement>("pyOutputPane"); // pytutor injects #errorOutput here
+  if (fe) errorTargets.push(fe);
+  if (out) errorTargets.push(out);
+  if (errorTargets.length > 0) {
+    const observer = new MutationObserver(() => {
+      setPanelVisibility(params.getMode);
+    });
+    errorTargets.forEach((el) =>
+      observer.observe(el, { childList: true, characterData: true, subtree: true }));
+  }
 
   window.addEventListener("hashchange", () => {
     setPanelVisibility(params.getMode);
   });
 
+  // API mode: hide the local-model UI (model <select> + Confirm/Pull button
+  // and the local-status line) — the model is fixed server-side, so there is
+  // nothing for the user to pick. Mirrors the live page's local-only hiding.
+  const localModelRow = modelSelection.parentElement;
+  if (localModelRow) {
+    localModelRow.style.display = "none";
+  }
+  const localStatus = getEl<HTMLElement>("download-status");
+  if (localStatus) {
+    localStatus.classList.add("hidden");
+  }
+
   // In API mode, no model download needed — enable Ask AI immediately
   if (API_CONFIG.enabled) {
-    setStatusText("Using server AI (API mode).", false);
     askAIButton.disabled = false;
     setPanelVisibility(params.getMode);
     return;
