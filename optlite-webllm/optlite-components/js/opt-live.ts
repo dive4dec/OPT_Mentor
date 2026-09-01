@@ -429,11 +429,12 @@ export class OptLiveFrontend extends OptFrontend {
           this.myVisualizer.redrawConnectors();
         }
 
-        // highlight the faulting line (red full-line marker). The exception
+        // Highlight the faulting line (red full-line marker). The exception
         // message is shown via setFronendError() by the caller.
+        // NOTE: we do NOT call gotoLineCol() or focus() here — in live mode
+        // the student is mid-typing, and moving the cursor / stealing focus
+        // yanks them away from where they are completing the code.
         this.pyInputAceEditor.setErrorLine(errorLineNo);
-        this.pyInputAceEditor.gotoLineCol(errorLineNo, trace[0].col);
-        this.pyInputAceEditor.focus();
       }
     }
   }
