@@ -227,6 +227,15 @@ export class OptLiveFrontend extends OptFrontend {
 
     // render error (if applicable):
     var curEntry = myVisualizer.curTrace[myVisualizer.curInstr];
+    // If the current step IS an error (a user's in-progress code hitting a
+    // syntax/runtime error, or stepping onto a runtime exception), we must NOT
+    // auto-scroll to that line — in live mode the user is usually still typing
+    // to finish the code, and auto-scrolling yanks the viewport (and thus their
+    // place) away, so they lose their spot. The red error-line highlight +
+    // error message already show WHERE the error is, so scrolling is redundant.
+    // (Normal non-error stepping still scrolls to follow execution.)
+    const isErrorStep = curEntry &&
+      (curEntry.event === 'exception' || curEntry.event === 'uncaught_exception');
     if (curEntry.event === 'exception' ||
       curEntry.event === 'uncaught_exception') {
       assert(curEntry.exception_msg);
@@ -266,7 +275,7 @@ export class OptLiveFrontend extends OptFrontend {
     // sure not to appear jarring, so apply some heuristics here
     // such as disableRowScrolling and checking to see if the current line
     // is visible
-    if (lineToScrollTo && !this.disableRowScrolling) {
+    if (lineToScrollTo && !this.disableRowScrolling && !isErrorStep) {
       var firstVisible = this.pyInputAceEditor.getFirstVisibleRow() + 1; // +1 to be more accurate
       var lastVisible = this.pyInputAceEditor.getLastVisibleRow();
       if (lineToScrollTo < firstVisible ||
