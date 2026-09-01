@@ -123,11 +123,24 @@ module.exports = {
               test: /\.(png|svg|jpg|jpeg|gif)$/i,
               type: 'asset/resource',
             }, // Image
-            { 
+            {
               test: /\.tsx?$/,
               use: 'ts-loader',
+              exclude: [/node_modules/, /[\\/]js[\\/]cm-editor\.ts$/],
+            }, // TypeScript (everything else — es5)
+            // CodeMirror 6 editor (js/cm-editor.ts): must compile to ES2017 so
+            // that `class StepMarker extends GutterMarker` emits a NATIVE class.
+            // The project's default target is es5, which transpiles the
+            // `extends` into a `GutterMarker.call(this)` super call — but CM6's
+            // GutterMarker is a native ES2015 class and throws "Class
+            // constructor cannot be invoked without 'new'", silently killing
+            // the whole gutter. Scoped to this one self-contained file so the
+            // legacy es5 target is untouched for everything else.
+            {
+              test: /[\\/]js[\\/]cm-editor\.ts$/,
+              use: { loader: 'ts-loader', options: { configFile: 'tsconfig.cm6.json' } },
               exclude: /node_modules/,
-            }, // TypeScript
+            }, // TypeScript (CM6 — ES2017 native classes)
             {
               test: /\.ttf$/,
               type: 'asset/resource'

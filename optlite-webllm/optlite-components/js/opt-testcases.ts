@@ -5,6 +5,8 @@
 export const redSadFace = require('./images/red-sad-face.jpg');
 export const yellowHappyFace = require('./images/yellow-happy-face.jpg');
 
+import { OptCmEditor } from './cm-editor';
+
 
 const testcasesPaneHtml = '\
 <table id="testCasesTable">\
@@ -106,27 +108,21 @@ export class OptTestcases {
     newTr.append(visualizeTd);
     newTr.append(deleteTd);
 
-    // initialize testCaseEditor with Ace:
-    var te = ace.edit('testCaseEditor_' + id);
-    // set the size and value ASAP to get alignment working well ...
-    te.setOptions({minLines: 2, maxLines: 4}); // keep this SMALL
-    te.setHighlightActiveLine(false);
-    te.setShowPrintMargin(false);
-    te.setBehavioursEnabled(false);
-    te.setFontSize('11px');
-    te.$blockScrolling = Infinity; // kludgy to shut up weird warnings
-
-    var s = te.getSession();
-    s.setTabSize(2);
-    s.setUseSoftTabs(true);
-    // disable extraneous indicators:
-    s.setFoldStyle('manual'); // no code folding indicators
-    // don't do real-time syntax checks:
-    // https://github.com/ajaxorg/ace/wiki/Syntax-validation
-    s.setOption("useWorker", false);
-    s.on("change", (e) => {
-      $('#outputTd_' + id).empty(); // remove all test output indicators
+    // initialize testCaseEditor with CodeMirror 6:
+    // (CM6 has no ace.edit(id) global cache, so we store the instance on its
+    // container element and read it back by id below.)
+    const teEl = document.getElementById('testCaseEditor_' + id) as any;
+    const te = new OptCmEditor({
+      container: teEl,
+      value: '',
+      mode: 'python',
+      tabSize: 2,
+      fontSize: '11px',
+      onChange: () => {
+        $('#outputTd_' + id).empty(); // remove all test output indicators
+      },
     });
+    teEl.env = { editor: te }; // stashed for read-back by id (getCombinedCode, etc.)
 
     // TODO: change syntax highlighting mode if the user changes languages:
     var lang = $('#pythonVersionSelector').val();
@@ -148,16 +144,13 @@ export class OptTestcases {
       mod = 'ruby';
       defaultVal = "\n# raise 'fail' unless <test condition>";
     }
-    s.setMode("ace/mode/" + mod);
+    te.setMode(mod);
 
-    te.setValue(initialCod ? initialCod.rtrim() : defaultVal,
-                -1 /* do NOT select after setting text */);
+    te.setValue(initialCod ? initialCod.rtrim() : defaultVal);
     te.focus();
 
     function runOrVizTestCase(isViz /* true for visualize, false for run */) {
       $("#runAllTestsButton,.runTestCase,.vizTestCase").attr('disabled', true);
-      var e = ace.edit('testCaseEditor_' + id);
-      e.getSession().clearAnnotations();
       $('#outputTd_' + id).html('');
 
       var dat = _me.getCombinedCode(id);
@@ -187,9 +180,18 @@ export class OptTestcases {
     $(".vizTestCase").html('Visualize');
   }
 
+  // retrieve a test-case editor instance by its DOM id. CM6 has no
+  // ace.edit(id) global cache, so we read the OptCmEditor off the element's
+  // stashed `.env.editor` (set in addTestcase).
+  getTestCaseEditor(id: number): any {
+    var el = document.getElementById('testCaseEditor_' + id) as any;
+    return el && el.env && el.env.editor;
+  }
+
   getCombinedCode(id) {
     var userCod = this.parent.pyInputGetValue();
-    var testCod = ace.edit('testCaseEditor_' + id).getValue();
+    var te = this.getTestCaseEditor(id);
+    var testCod = te ? te.getValue() : '';
     // for reporting syntax errors separately for user and test code
     var userCodNumLines = userCod.split('\n').length;
 
@@ -212,8 +214,8 @@ export class OptTestcases {
     function getAllTestcases() {
       return $.map($("#testCasesParent #testCasesTable .testCaseEditor"),
       (e) => {
-        var editor = ace.edit($(e).attr('id'));
-        return editor.getValue();
+        var ed = (e as any).env && (e as any).env.editor;
+        return ed ? ed.getValue() : '';
       });
     }
 

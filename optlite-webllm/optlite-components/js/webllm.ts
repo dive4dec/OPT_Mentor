@@ -438,7 +438,7 @@ document.getElementById("askAI").addEventListener("click", function () {
     // 1-based line numbers matching the editor, so the model cites lines
     // correctly instead of counting unnumbered source itself.
     var question = buildAiQuestion(
-        extractText(),
+        getEditorCode(),
         (document.getElementById("frontendErrorOutput")?.textContent || "").replace("(UNSUPPORTED FEATURES)", "")
     );
 
@@ -454,14 +454,49 @@ document.getElementById("download").addEventListener("click", function () {
     });
 });
 
+// Read the current code straight from the editor (authoritative,
+// line-accurate). Primary path: the page exposes the CodeMirror 6 editor on
+// `#codeInputPane.env.editor` (see opt-live.ts) → getValue(). Fallback: DOM
+// scrape, now CM6-aware AND null-safe. It previously scraped the ACE text
+// layer (`.ace_layer.ace_text-layer` / `.ace_line`), which the ACE -> CodeMirror 6
+// migration removed, so a missing container threw
+// "Cannot read properties of null (reading 'querySelectorAll')" and killed the
+// Ask AI click before the request could fire.
+function getEditorCode(): string {
+    try {
+        const pane = document.getElementById("codeInputPane");
+        if (pane && (pane as any).env && (pane as any).env.editor) {
+            const v = (pane as any).env.editor.getValue();
+            if (typeof v === "string") {
+                return v;
+            }
+        }
+    } catch (e) { /* fall through to DOM scrape */ }
+    return extractText();
+}
+
 function extractText() {
+    // Prefer CodeMirror 6 (the current editor): every code line lives in a
+    // `.cm-content .cm-line` element. CM6 virtualizes lines, but for a
+    // reasonable program the visible lines cover the code; the authoritative
+    // path is `env.editor.getValue()` above, so this is only a safety net.
+    const cmLines = document.querySelectorAll('.cm-editor .cm-content .cm-line');
+    if (cmLines.length) {
+        let extractedText = '';
+        cmLines.forEach(line => { extractedText += line.textContent + '\n'; });
+        return extractedText;
+    }
+    // Legacy ACE fallback (kept null-safe; the ACE elements no longer exist
+    // after the migration, so this branch effectively never matches).
     const container = document.querySelector('.ace_layer.ace_text-layer');
+    if (!container) {
+        return '';
+    }
     const lines = container.querySelectorAll('.ace_line');
     let extractedText = '';
     lines.forEach(line => {
         extractedText += line.textContent + '\n';
     });
-
     return extractedText;
 }
 

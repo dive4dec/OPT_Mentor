@@ -218,8 +218,8 @@ button.surveyBtnBig {
   padding: 2px;
 }
 
-/* necessary for CodeMirror error line highlighting to work! */
-.CodeMirror .errorLine { background: #ffff3f !important; }
+/* (Legacy CodeMirror 5 errorLine rule removed — the editor is now CodeMirror 6,
+   whose error-line + step-arrow styles are defined at the bottom of this file.) */
 
 
 /* from http://rog.ie/blog/css-star-rater */
@@ -365,5 +365,18 @@ textarea.bubbleInputText {
 	-webkit-background-clip: padding-box;
 	-moz-background-clip: padding;
 	background-clip: padding-box;
+}
+
+/* Make sure the code editor container is a real block that CM6 can fill.
+   (The step-arrow background images live in css/opt-live.css — the live page
+   is the only one that renders step markers, and it loads opt-live.css.) */
+#codeInputPane {
+  position: relative;
+}
+#codeInputPane .cm-editor {
+  height: 100%;
+}
+#codeInputPane .cm-scroller {
+  overflow: auto;
 }
 

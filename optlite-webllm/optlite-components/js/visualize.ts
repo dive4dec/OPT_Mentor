@@ -136,16 +136,13 @@ OptFrontend
             errorLineNo >= firstTestLine) {
             var adjustedErrorLineNo = errorLineNo - firstTestLine;
 
-            var te = ace.edit('testCaseEditor_' + id);
-            var s = te.getSession();
-
-            s.setAnnotations([{
-              row: adjustedErrorLineNo,
-              column: null, // for TS typechecking
-              type: 'error',
-              text: trace[0].exception_msg
-            }]);
-            te.gotoLine(adjustedErrorLineNo + 1); // one-indexed
+            // highlight the faulting line in the test case pane itself
+            // (CM6 editor instance is retrieved via the OptTestcases helper).
+            var te = this.optTests.getTestCaseEditor(id);
+            if (te) {
+              te.setErrorLine(adjustedErrorLineNo);
+              te.gotoLineCol(adjustedErrorLineNo);
+            }
           }
         }
 

@@ -24,20 +24,12 @@ declare var codeopticonSession: string;  // FIX later when porting Codeopticon
 
 require('./lib/jquery-3.0.0.min.js');
 
-// just punt and use global script dependencies
-require("script-loader!./lib/ace/src-min-noconflict/ace.js");
-require('script-loader!./lib/ace/src-min-noconflict/mode-python.js');
-// require('script-loader!./lib/ace/src-min-noconflict/mode-javascript.js');
-// require('script-loader!./lib/ace/src-min-noconflict/mode-typescript.js');
-// require('script-loader!./lib/ace/src-min-noconflict/mode-c_cpp.js');
-// require('script-loader!./lib/ace/src-min-noconflict/mode-java.js');
-// require('script-loader!./lib/ace/src-min-noconflict/mode-ruby.js');
-
 // require('script-loader!./lib/socket.io-client/socket.io.js');
 
 // need to directly import the class for type checking to work
 import { AbstractBaseFrontend, generateUUID, supports_html5_storage } from './opt-frontend-common';
 import { ExecutionVisualizer, assert, htmlspecialchars } from './pytutor';
+import { OptCmEditor } from './cm-editor';
 
 require('../css/opt-frontend.css');
 require('../css/opt-testcases.css');
@@ -66,7 +58,7 @@ function sanitizeURL(s) {
 
 export class OptFrontend extends AbstractBaseFrontend {
   originFrontendJsFile: string = 'opt-frontend.js';
-  pyInputAceEditor = undefined; // Ace editor object that contains the user's code
+  pyInputAceEditor: any = undefined; // CodeMirror 6 editor object (OptCmEditor) that contains the user's code
   // preferredDisplayMode: string = 'display';
   preferredDisplayMode: string = 'ai_display';
 
@@ -254,51 +246,29 @@ export class OptFrontend extends AbstractBaseFrontend {
 
   initAceEditor(height: number) {
     assert(!this.pyInputAceEditor);
-    this.pyInputAceEditor = ace.edit('codeInputPane');
-    var s = this.pyInputAceEditor.getSession();
-    // tab -> 4 spaces
-    s.setTabSize(4);
-    s.setUseSoftTabs(true);
-    // disable extraneous indicators:
-    s.setFoldStyle('manual'); // no code folding indicators
-    s.getDocument().setNewLineMode('unix'); // canonicalize all newlines to unix format
-    this.pyInputAceEditor.setHighlightActiveLine(false);
-    this.pyInputAceEditor.setShowPrintMargin(false);
-    this.pyInputAceEditor.setBehavioursEnabled(false);
-    this.pyInputAceEditor.$blockScrolling = Infinity; // kludgy to shut up weird warnings
 
-    // auto-grow height as fit
-    this.pyInputAceEditor.setOptions({ minLines: 18, maxLines: 1000 });
-
+    // Responsive width: fill the pane on small screens (phones), cap at 700px
+    // on desktop. (These CSS rules are independent of the editor lib.)
     $('#codeInputPane').css('width', '700px');
-    $('#codeInputPane').css('height', height + 'px'); // VERY IMPORTANT so that it works on I.E., ugh!
+    $('#codeInputPane').css('max-width', '700px');
+    $('#codeInputPane').css('height', height + 'px'); // give CM6 a fixed height to fill
 
-    this.initDeltaObj();
-    this.pyInputAceEditor.on('change', (e) => {
-      // 2017-11-21: convert all tabs to 4 spaces so that when you paste
-      // in code from somewhere else that contains tabs, instantly
-      // change all those tabs to spaces. note that all uses of 'tab' key
-      // within the Ace editor on this page will result in spaces (i.e.,
-      // "soft tabs")
-      var curVal = this.pyInputGetValue();
-      if (curVal.indexOf('\t') >= 0) {
-        this.pyInputSetValue(curVal.replace(allTabsRE, '    '));
-        console.log("Converted all tabs to spaces");
-      }
-
-      $.doTimeout('pyInputAceEditorChange', CODE_SNAPSHOT_DEBOUNCE_MS, this.snapshotCodeDiff.bind(this)); // debounce
-
-      // starting on 2018-03-14 -- do NOT clear frontend errors and
-      // annotations when you edit the code, since you may still want to
-      // see the old error messages ... commented out these two lines:
-      //this.clearFrontendError();
-      //s.clearAnnotations();
+    const containerEl = document.getElementById('codeInputPane');
+    this.pyInputAceEditor = new OptCmEditor({
+      container: containerEl,
+      value: '',
+      mode: 'python',
+      tabSize: 4,
+      onChange: (text) => {
+        // 2017-11-21: convert any pasted tabs to 4 spaces instantly (soft tabs).
+        if (text.indexOf('\t') >= 0) {
+          this.pyInputSetValue(text.replace(allTabsRE, '    '));
+        }
+        $.doTimeout('pyInputAceEditorChange', CODE_SNAPSHOT_DEBOUNCE_MS, this.snapshotCodeDiff.bind(this)); // debounce
+      },
     });
 
-    // don't do real-time syntax checks:
-    // https://github.com/ajaxorg/ace/wiki/Syntax-validation
-    s.setOption("useWorker", false);
-
+    this.initDeltaObj();
     this.setAceMode();
     this.pyInputAceEditor.focus();
   }
@@ -338,14 +308,11 @@ export class OptFrontend extends AbstractBaseFrontend {
    // }
     assert(mod);
 
-    var s = this.pyInputAceEditor.getSession();
-    s.setMode("ace/mode/" + mod);
-    s.setTabSize(tabSize);
-    s.setUseSoftTabs(true);
+    this.pyInputAceEditor.setMode(mod);
+    // tabSize is fixed at editor construction (soft tabs); no-op here for CM6.
 
     // clear all error displays when switching modes
-    var s = this.pyInputAceEditor.getSession();
-    s.clearAnnotations();
+    this.pyInputAceEditor.setErrorLine(null);
 
     // if (selectorVal === 'java') {
     //   $("#javaOptionsPane").show();
@@ -367,8 +334,7 @@ export class OptFrontend extends AbstractBaseFrontend {
   }
 
   pyInputSetValue(dat) {
-    this.pyInputAceEditor.setValue(dat.rtrim() /* kill trailing spaces */,
-      -1 /* do NOT select after setting text */);
+    this.pyInputAceEditor.setValue(dat.rtrim() /* kill trailing spaces */);
     $('#urlOutput,#urlOutputShortened,#embedCodeOutput').val('');
     this.clearFrontendError();
     // also scroll to top to make the UI more usable on smaller monitors
@@ -376,13 +342,10 @@ export class OptFrontend extends AbstractBaseFrontend {
     $(document).scrollTop(0);
   }
 
-  pyInputGetScrollTop() {
-    return this.pyInputAceEditor.getSession().getScrollTop();
-  }
-
-  pyInputSetScrollTop(st) {
-    this.pyInputAceEditor.getSession().setScrollTop(st);
-  }
+  // (Legacy ACE scroll accessors — unused by the current UI. Kept as harmless
+  //  no-ops for CM6, which scrolls natively.)
+  pyInputGetScrollTop() { return 0; }
+  pyInputSetScrollTop(_st) { /* no-op: CM6 scrolls natively */ }
 
   executeCodeFromScratch() {
     // don't execute empty string:
@@ -492,25 +455,16 @@ export class OptFrontend extends AbstractBaseFrontend {
 
   handleUncaughtException(trace) {
     if (trace.length == 1 && trace[0].line) {
-      var errorLineNo = trace[0].line - 1; /* Ace lines are zero-indexed */
-      if (errorLineNo !== undefined 
+      var errorLineNo = trace[0].line - 1; /* lines are zero-indexed */
+      if (errorLineNo !== undefined
         // && errorLineNo != NaN
         ) {
-        // highlight the faulting line
-        var s = this.pyInputAceEditor.getSession();
-        s.setAnnotations([{
-          row: errorLineNo,
-          column: null, /* for TS typechecking */
-          type: 'error',
-          text: trace[0].exception_msg
-        }]);
-        this.pyInputAceEditor.gotoLine(errorLineNo + 1 /* one-indexed */);
-        // if we have both a line and column number, then move over to
-        // that column. (going to the line first prevents weird
-        // highlighting bugs)
-        if (trace[0].col !== undefined) {
-          this.pyInputAceEditor.moveCursorTo(errorLineNo, trace[0].col);
-        }
+        // highlight the faulting line (red full-line marker). The exception
+        // MESSAGE is shown by setFronendError() in #frontendErrorOutput (called
+        // by the base class), so we only need to point at the line here.
+        this.pyInputAceEditor.setErrorLine(errorLineNo);
+        // move the cursor to the faulting line (and column, if known)
+        this.pyInputAceEditor.gotoLineCol(errorLineNo, trace[0].col);
         this.pyInputAceEditor.focus();
       }
     }
