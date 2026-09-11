@@ -357,6 +357,14 @@ export class OptFrontend extends AbstractBaseFrontend {
   }
 
   executeCode(forceStartingInstr = 0, forceRawInputLst = undefined) {
+    // A brand-new execution invalidates any prior AI answer (it was computed
+    // for the previous code/error). Fire a decoupled event so the visualize
+    // page's AI panel clears its conversation. Decoupled (not a direct
+    // import) because this file is shared with the live-page webpack chunk,
+    // and visualize-ai.ts pulls in the webllm engine — a direct import would
+    // bloat the live bundle. (The listener is registered in visualize-ai.ts.)
+    window.dispatchEvent(new CustomEvent("opt-mentor:new-execution"));
+
     // if you're in display mode, kick back into edit mode before executing
     // or else the display might not refresh properly ... ugh krufty
     if (this.appMode != 'edit') {
