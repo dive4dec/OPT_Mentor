@@ -21,7 +21,7 @@ import {
 import {
   EditorView, keymap, lineNumbers, highlightActiveLineGutter,
   drawSelection, dropCursor, placeholder, Decoration, GutterMarker,
-  gutter,
+  gutter, rectangularSelection,
 } from "@codemirror/view";
 import {
   defaultKeymap, history, historyKeymap, indentWithTab,
@@ -146,6 +146,11 @@ const baseHighlight = HighlightStyle.define([
   { tag: tags.propertyName, color: "#001080" },
 ]);
 
+// Box / rectangular selection: CM6's rectangularSelection() reacts to Alt+drag
+// by default, selecting one range (cursor) per line. Works once the
+// allowMultipleSelections facet is enabled in the extensions list below.
+const boxSelect = rectangularSelection();
+
 // Language mode map — maps the old ACE mode names to CM6 language extensions.
 // Only python and c_cpp are installed as CM6 lang packages; the others are
 // legacy ACE modes that were never actually selectable at runtime (the
@@ -224,6 +229,16 @@ export class OptCmEditor {
     const startState = EditorState.create({
       doc: opts.value,
       extensions: [
+        // Enable CM6's built-in multiple-selection / multiple-cursor machinery.
+        // This static facet defaults to OFF, which forces every selection
+        // through asSingle() (collapsing to one cursor) — the reason multi-
+        // cursor appeared "unsupported". Once ON, the following all work with
+        // their standard keybindings (already in the keymaps above / CM6 core):
+        //   - Ctrl/Cmd+Click      add a cursor at the click (addsSelectionRange)
+        //   - Ctrl/Cmd+D          select next occurrence of the word
+        //   - Ctrl/Cmd+Shift+L    select ALL occurrences of the word
+        //   - Alt+drag            box / rectangular selection (rectangularSelection)
+        EditorState.allowMultipleSelections.of(true),
         lineNumbers(),
         highlightActiveLineGutter(),
         stepGutter(),
@@ -233,6 +248,7 @@ export class OptCmEditor {
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
         autocompletion(),
         highlightSelectionMatches(),
+        boxSelect,
         syntaxHighlighting(baseHighlight),
         indentUnit.of(" ".padStart(tab, " ")),   // soft tabs
         this.modeCompartment.of(langExtension(opts.mode || "python")),
