@@ -2,21 +2,29 @@ import { OptLite, combineDefaults } from './global'
 import { default as optlite } from '../../dist/optlite-0.0.6-py2.py3-none-any.whl';
 
 // Pyodide v314+ requires a module worker (classic workers no longer supported).
-// The worker is built as a separate webpack entry point (optworker.bundle.*.js).
-// We resolve its URL relative to the main bundle's URL (import.meta.url in
-// module output, or document.currentScript in classic output), then create
-// the Worker with { type: "module" } to bypass webpack's worker handling
-// (which strips the module flag when output.module is not enabled).
+// The worker is built as a separate webpack entry point, referenced BY NAME at
+// runtime (webpack's WorkerPlugin can't be used here because it strips the
+// `module` flag unless output.module is on). We resolve its URL relative to the
+// main bundle's URL (document.currentScript.src in classic output,
+// import.meta.url in module output) and create it with { type: "module" }.
+//
+// CACHE-BUSTING: the worker is served with `Cache-Control: public, immutable`
+// (nginx.conf). A bare fixed name like "optworker.bundle.js" would be pinned to
+// whichever version a browser first fetched — after a deploy that changes the
+// worker but not its name, a hard refresh re-fetches the hash-busted MAIN bundle
+// but the immutable stale worker keeps being used (this is why Jedi completion
+// "didn't work" until incognito after v29). webpack names the worker with a
+// per-content token (__OPT_WORKER_TOKEN__, injected by DefinePlugin in
+// webpack.config.js) that changes whenever the worker changes, so its URL
+// orphans the stale cache on every deploy. The token is a compile-time const,
+// so it inlines into this bundle (no import / runtime resolution needed).
 const pyodideWorker = (() => {
-  // Get the base URL of the current bundle directory
   const bundleUrl = typeof document !== 'undefined' && document.currentScript
     ? (document.currentScript as HTMLScriptElement).src
     : import.meta.url;
-  const baseUrl = bundleUrl.replace(/[^/]*$/, '');
-  // The worker filename pattern: optworker.bundle.[hash].js
-  // We use a wildcard fetch to find the exact filename at runtime.
-  // Fallback: try common hash-free name first.
-  return new Worker(baseUrl + 'optworker.bundle.js', { type: "module" });
+  const base = bundleUrl.replace(/[^/]*$/, '');
+  const workerName = 'optworker.bundle.' + __OPT_WORKER_TOKEN__ + '.js';
+  return new Worker(base + workerName, { type: "module" });
 })();
 const callbacks: Record<number, (data: any) => void> = {};
 

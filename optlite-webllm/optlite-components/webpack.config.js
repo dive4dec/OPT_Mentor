@@ -12,6 +12,29 @@ const injectTarget = String(process.env.API_INJECT_TARGET || 'window').toLowerCa
 // webpack uses its default behavior (relative URLs in HtmlWebpackPlugin).
 const publicPath = process.env.PUBLIC_PATH || undefined;
 
+// Cache-busting token for the pyodide worker.
+//
+// runner.ts loads the worker BY NAME at runtime, so webpack emits it under a
+// fixed base name (not a content hash). The server (nginx.conf) serves *.js with
+// `Cache-Control: public, immutable`, which means a fixed URL would be pinned to
+// whichever version a browser first fetched: after a deploy that changes the
+// worker but not its name, a hard refresh re-fetches the hash-busted MAIN bundle
+// but the immutable stale worker keeps being used (this is why Jedi completion
+// "didn't work" until incognito after v29).
+//
+// Fix: give the worker a token in its filename that changes whenever its content
+// changes. We key the token to the worker's source (+ webpack version): an
+// unchanged worker keeps a stable, immutable-cacheable URL, while any worker edit
+// produces a new URL that orphans the stale cache. The same token is injected into
+// the main bundle via DefinePlugin so runner.ts and this config name it identically.
+const { createHash } = require('crypto');
+const fs = require('fs');
+const workerToken = process.env.OPT_WORKER_TOKEN ||
+  'w' + createHash('sha256').update(
+    fs.readFileSync(__dirname + '/js/pyodide/optworker.mjs', 'utf8') +
+      '|' + require('webpack/package.json').version
+  ).digest('hex').slice(0, 8);
+
 const windowVars = (injectApi && injectTarget === 'window') ? {
   ...(process.env.API_BASE_URL ? { API_BASE_URL: String(process.env.API_BASE_URL).trim() } : {}),
   ...(process.env.API_KEY !== undefined ? { API_KEY: process.env.API_KEY } : {}),
@@ -70,6 +93,10 @@ module.exports = {
         template: './js/template/visualize.html',
         window: windowVars,
       }),
+      // Always-on: inject the pyodide worker cache-busting token into every
+      // bundle (local, GH Pages, docker main/flex) so runner.ts and the worker
+      // filename agree. Independent of the API-injection target below.
+      new webpack.DefinePlugin({ __OPT_WORKER_TOKEN__: JSON.stringify(workerToken) }),
       ...(injectTarget === 'define' ? [new webpack.DefinePlugin(defineReplacements)] : [])
     ],
 
@@ -103,11 +130,13 @@ module.exports = {
     output: {
         path: __dirname + "/build/",
         ...(publicPath ? { publicPath } : {}),
-        // Worker entry point gets a fixed filename (no hash) so it can be
-        // referenced at runtime; main bundles keep contenthash for cache-busting.
+        // Worker entry point is named with a per-content token (workerToken) so
+        // its URL changes when the worker changes — required for cache-busting,
+        // since it's served `immutable` and referenced by name at runtime. Main
+        // bundles keep [contenthash] for cache-busting. See workerToken above.
         filename: (pathData) => {
             return pathData.chunk.name === 'optworker'
-                ? 'optworker.bundle.js'
+                ? 'optworker.bundle.' + workerToken + '.js'
                 : '[name].bundle.[contenthash:8].js';
         },
         sourceMapFilename: "[file].map",
