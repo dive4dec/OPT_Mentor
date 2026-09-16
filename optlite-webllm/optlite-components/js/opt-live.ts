@@ -52,7 +52,7 @@ require('./webllm');
 import { OptFrontend } from './opt-frontend';
 import { ExecutionVisualizer, assert, brightRed, darkArrowColor, lightArrowColor, SVG_ARROW_POLYGON, htmlspecialchars } from './pytutor';
 import { allTabsRE } from './opt-frontend';
-import { asyncRun } from './pyodide/runner';
+import { asyncRun, pyComplete } from './pyodide/runner';
 import { nullTraceErrorLst } from './footer-html';
 import * as d3 from 'd3';
 import { OptCmEditor } from './cm-editor';
@@ -464,6 +464,7 @@ export class OptLiveFrontend extends OptFrontend {
       value: '',
       mode: 'python',
       tabSize: 4,
+      pythonCompleter: pyComplete,   // Jedi-backed attribute completion (str. -> format/join)
       onChange: (text) => {
         // 2017-11-21: convert all pasted tabs to 4 spaces (soft tabs).
         if (text.indexOf('\t') >= 0) {

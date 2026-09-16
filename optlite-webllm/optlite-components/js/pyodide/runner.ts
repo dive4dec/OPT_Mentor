@@ -71,10 +71,59 @@ const asyncRun = (() => {
           script: script,
           rawInputLst: rawInputLst,
           id,
-        });  
+        });
       }).catch(reject);
     });
   };
 })();
 
-export { asyncRun };
+// --- Python code completion via Jedi (runs in the worker) ------------------
+// Lets the editor complete attribute/member access (`str.` -> format/join)
+// from the *visible* code. Static analysis (jedi.Script), so it works without
+// executing and is safe on buggy code. See optworker.mjs 'complete' branch.
+//
+// Latency/safety guarantees (all verified against the loaded @codemirror/
+// autocomplete 6.20.3):
+//   * Non-blocking: a CompletionSource may return a Promise, so the editor
+//     shows results as they arrive and never waits on the worker.
+//   * Stale results: CodeMirror aborts an in-flight query when the doc changes
+//     (context.aborted) and coalesces rapid typing via activateOnTypingDelay,
+//     so a slow `str.` result from an earlier keystroke is discarded, not shown.
+//   * Busy worker: if the worker is blocked running a long script, the
+//     client-side timeout below still settles the Promise (with null), so the
+//     completion UI degrades to the static list rather than hanging.
+let completionId = 0;
+const COMPLETION_TIMEOUT_MS = 6000;
+const timeouts: Record<number, any> = {};
+
+const pyComplete = (() => {
+  return (code: string, line: number, column: number): Promise<Array<{name: string, type: string}> | null> => {
+    // Negative id namespace: the worker routes completion messages by
+    // `type === 'complete'` (not by id), so a negative id is safe on the wire,
+    // and it can never collide with asyncRun's non-negative ids or init's -1
+    // in the shared `callbacks` map. (A collision there is exactly what made a
+    // completion reply get consumed by a concurrent auto-execution in live mode.)
+    const id = -2 - completionId++;
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value: Array<{name: string, type: string}> | null) => {
+        if (settled) return;
+        settled = true;
+        const t = timeouts[id];
+        if (t) { clearTimeout(t); delete timeouts[id]; }
+        delete callbacks[id];
+        resolve(value);
+      };
+      callbacks[id] = (data: any) => {
+        finish(data && !data.error ? (data.suggestions || null) : null);
+      };
+      // Safety net: if the worker is busy (long script running) we still settle.
+      timeouts[id] = setTimeout(() => finish(null), COMPLETION_TIMEOUT_MS);
+      init.then(() => {
+        pyodideWorker.postMessage({ type: 'complete', code, line, column, id });
+      }).catch(() => finish(null));
+    });
+  };
+})();
+
+export { asyncRun, pyComplete };

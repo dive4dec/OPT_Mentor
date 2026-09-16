@@ -31,9 +31,14 @@ import {
 } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import type { Range as CmRange } from "@codemirror/state";
-import { python } from "@codemirror/lang-python";
+import {
+  autocompletion,
+  type CompletionContext,
+  type CompletionResult,
+  type Completion,
+} from "@codemirror/autocomplete";
+import { python, globalCompletion, localCompletionSource } from "@codemirror/lang-python";
 import { cpp } from "@codemirror/lang-cpp";
-import { autocompletion } from "@codemirror/autocomplete";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 
 // --- Red error line (0-based), null to clear --------------------------------
@@ -163,6 +168,101 @@ function langExtension(mode: string): any {
   }
 }
 
+// --- Python autocomplete: Jedi attributes + static builtins/locals ---------
+//
+// The default CodeMirror python() completion only knows a static list of
+// keywords/builtins/local-name-hints, so `str.` offered the bare `format`
+// *function* (a builtin) but not the `str.format` *method*. That's the reported
+// bug. This source fixes attribute completion by asking Jedi (static analysis,
+// running in the pyodide worker) for the real member list.
+//
+// It is used as the single `autocompletion({ override: [source] })` source:
+//   * DOT context (`str.`, `mylist.ap`, `os.`)  -> Jedi, async. Returns the
+//     actual attribute/method list. Async because it round-trips the worker;
+//     CodeMirror shows nothing until it settles (the worker is warm, so this
+//     is ~0.5s; a client timeout in pyComplete degrades to null).
+//   * BARE context (typing a plain name)        -> the exact static sources
+//     @codemirror/lang-python ships (globalCompletion + localCompletionSource),
+//     merged. Synchronous and identical to the current behavior, so bare-word
+//     completion (keywords, builtins, None/True, local vars) never regresses
+//     and never waits on the worker.
+// A single source (rather than adding Jedi as a third source) prevents the
+// static builtin list from also firing in dot contexts and leaking unrelated
+// builtins (e.g. the bare `format`) next to the correct `str.format`.
+const IDENT = /[A-Za-z0-9_]/;
+
+function mergeCompletionResults(a: CompletionResult | null, b: CompletionResult | null): CompletionResult | null {
+  const live = [a, b].filter(Boolean) as CompletionResult[];
+  if (live.length === 0) return null;
+  if (live.length === 1) return live[0];
+  const options: Completion[] = [];
+  const seen = new Set<string>();
+  let from = Infinity;
+  for (const r of live) {
+    if (r.from < from) from = r.from;
+    for (const o of r.options as Completion[]) {
+      if (!seen.has(o.label)) { seen.add(o.label); options.push(o); }
+    }
+  }
+  return { options, from, validFor: live[0].validFor };
+}
+
+// Map Jedi's completion type string to a CodeMirror option type (icon hint).
+function mapJediType(t: string): Completion["type"] {
+  switch (t) {
+    case "class": return "class";
+    case "module": return "module";
+    case "keyword": return "keyword";
+    case "param": return "variable";
+    case "function": return "function";
+    case "instance": return "property";
+    default: return "property"; // methods / attributes / statement
+  }
+}
+
+// A function that asks the (already-running) pyodide worker for completions at
+// a cursor position. Injected from the caller, which is compiled under the
+// main (ES5) tsconfig and imports it from ./pyodide/runner. cm-editor.ts itself
+// stays self-contained (compiled by its own ES2017 tsconfig) and has no
+// dependency on the worker/runner modules.
+export type PyCompleter = (
+  code: string, line: number, column: number,
+) => Promise<Array<{ name: string; type: string }> | null>;
+
+function makeJediPythonSource(completer: PyCompleter) {
+  return (context: CompletionContext): CompletionResult | null | Promise<CompletionResult | null> => {
+    const pos = context.pos;
+    // Find the start of the identifier fragment ending at the cursor.
+    let from = pos;
+    const doc = context.state.doc;
+    while (from > 0 && IDENT.test(doc.sliceString(from - 1, from))) from--;
+    // DOT context: the char immediately before that fragment is '.'.
+    if (from > 0 && doc.sliceString(from - 1, from) === ".") {
+      const line = doc.lineAt(pos);
+      const lineNo = line.number;            // 1-based
+      const column = pos - line.from;        // 0-based
+      return completer(doc.toString(), lineNo, column).then((sugs) => {
+        if (!sugs || sugs.length === 0) return null;
+        return {
+          from,               // start of the member-name fragment (just after '.')
+          to: pos,
+          validFor: /[A-Za-z0-9_]*/,
+          options: sugs.map((s) => ({ label: s.name, type: mapJediType(s.type) })),
+        };
+      });
+    }
+    // BARE context: exact current behavior (builtins/keywords + local names).
+    // globalCompletion is typed as a CompletionSource (may return a Promise in
+    // some versions); in lang-python 6.x it is synchronous (completeFromList).
+    // Guard for the async case and fall through to it if it ever appears.
+    const a = globalCompletion(context);
+    const b = localCompletionSource(context);
+    if (a && typeof (a as any).then === "function") return a;
+    if (b && typeof (b as any).then === "function") return b;
+    return mergeCompletionResults(a as CompletionResult | null, b as CompletionResult | null);
+  };
+}
+
 export interface OptCmEditorOptions {
   container: HTMLElement;
   value: string;
@@ -172,6 +272,11 @@ export interface OptCmEditorOptions {
   fontSize?: string;        // override for test-case editor (smaller)
   minLines?: number;
   maxLines?: number;
+  // When set (and mode is python), attribute completion (`str.` -> format/join)
+  // is served by this async completer (backed by the pyodide/Jedi worker) while
+  // bare-word completion keeps the exact static behavior. Omit for the
+  // test-case editor / c_cpp to keep the default static completion.
+  pythonCompleter?: PyCompleter;
   onChange?: (text: string) => void;
 }
 
@@ -246,7 +351,15 @@ export class OptCmEditor {
         dropCursor(),
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
-        autocompletion(),
+        // Jedi-backed attribute completion for the Python editor. When a
+        // pythonCompleter is injected and the mode is python, we replace the
+        // default source with one that serves real attribute lists
+        // (str. -> format/join) from the worker while keeping the exact static
+        // builtin/keyword/local completion for bare words. c_cpp and any
+        // editor without a completer keep the default (static) behavior.
+        (opts.pythonCompleter && (opts.mode || "python") === "python")
+          ? autocompletion({ override: [makeJediPythonSource(opts.pythonCompleter)] })
+          : autocompletion(),
         highlightSelectionMatches(),
         boxSelect,
         syntaxHighlighting(baseHighlight),
