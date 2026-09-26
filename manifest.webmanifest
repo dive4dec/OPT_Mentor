@@ -1,0 +1,16 @@
+{
+  "name": "OPT Mentor — Visualize Python Code Execution",
+  "short_name": "OPT Mentor",
+  "description": "In-browser Python execution with step-by-step visualization and a Socratic AI tutor. Install it to run offline.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#30b0f0",
+  "icons": [
+    { "src": "pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "pwa/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
