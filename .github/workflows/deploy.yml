@@ -96,7 +96,17 @@ jobs:
         npm ci
         chmod +x node_modules/.bin/webpack
         npm run build:prod
-        
+
+    - name: Copy static files to build
+      run: |
+        cd optlite-webllm/optlite-components
+        # Service worker (minimal pass-through) + PWA manifest + icons so the
+        # site is installable. Relative paths in the manifest keep it
+        # base-path-agnostic (/OPT_Mentor/, /OPT_Mentor_/ flex, GH Pages root).
+        cp sw.js build/
+        cp manifest.webmanifest build/
+        cp -r pwa build/pwa
+
     - name: Verify build output
       run: |
         cd optlite-webllm/optlite-components

@@ -22,6 +22,43 @@
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <% } %>
 
+      <!-- PWA: makes the page installable (web app manifest + icons). All URLs are
+           RELATIVE (no hardcoded path) so they resolve identically under /OPT_Mentor/,
+           /OPT_Mentor_/ (flex) and the GitHub Pages root; the manifest's scope/start_url
+           are relative too, keeping it path-agnostic. -->
+      <link rel="manifest" href="manifest.webmanifest">
+      <meta name="theme-color" content="#30b0f0">
+      <meta name="mobile-web-app-capable" content="yes">
+      <meta name="apple-mobile-web-app-capable" content="yes">
+      <meta name="apple-mobile-web-app-status-bar-style" content="default">
+      <meta name="apple-mobile-web-app-title" content="OPT Mentor">
+      <link rel="apple-touch-icon" href="pwa/apple-icon-180.png">
+
+      <!-- Service Worker: a minimal pass-through that satisfies the PWA
+           installability criteria (a controlling SW with a fetch handler) and
+           lets the browser offer "Install app". Passes all requests straight to
+           the network (no caching, no COOP/COEP — Pyodide needs no SharedArrayBuffer). -->
+      <script>
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', function() {
+            navigator.serviceWorker.register('./sw.js').then(function(reg) {
+              console.log('[sw] Registered, scope:', reg.scope);
+              // First-ever registration: wait for activation then reload once so
+              // the page is under the SW's control (enables the install prompt).
+              if (!navigator.serviceWorker.controller) {
+                reg.addEventListener('statechange', function() {
+                  if (reg.active && reg.active.state === 'activated') {
+                    window.location.reload();
+                  }
+                });
+              }
+            }).catch(function(err) {
+              console.error('[sw] Registration failed:', err);
+            });
+          });
+        }
+      </script>
+
               <% for (var css in htmlWebpackPlugin.files.css) { %>
                 <link href="<%= htmlWebpackPlugin.files.css[css] %>" rel="stylesheet">
                 <% } %>

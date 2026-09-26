@@ -47,7 +47,11 @@ RUN pip3 install --break-system-packages -r optlite/requirements.txt \
     && python3 setup.py bdist_wheel -d dist \
     && npm run build:prod \
     && test -f build/index.html \
-    && test -f build/live.html
+    && test -f build/live.html \
+    && cp sw.js build/ \
+    && cp manifest.webmanifest build/ \
+    && cp -r pwa build/pwa \
+    && chmod 644 build/sw.js build/manifest.webmanifest build/pwa/*.png
 # Pre-compress the large JS bundles for nginx gzip_static (served as <file>.gz
 # with Content-Encoding: gzip, zero runtime CPU). ~6 MB raw -> ~2.6 MB on the
 # wire. Webpack names the big bundles "[name].bundle.[contenthash:8].js" (hash
