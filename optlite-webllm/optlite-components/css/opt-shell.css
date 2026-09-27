@@ -181,10 +181,10 @@ html[data-theme="dark"] #aichatbox #message-out { color: #7ec8ff; }
 /* Default Mode (visualize) response: #viz-message-out is a fixed light-mode
    blue set by "#visualize-ai-panel #viz-message-out" (2 IDs) — ~2:1, unreadable
    on the dark band. Mirror that 2-ID base so our dark override actually wins on
-   specificity. Same #7ec8ff dark + auto+system-dark treatment as #message-out. */
-html[data-theme="dark"] #visualize-ai-panel #viz-message-out { color: #7ec8ff; }
+   specificity. White in dark (Default Mode response is plain text, not a status color). */
+html[data-theme="dark"] #visualize-ai-panel #viz-message-out { color: #ffffff; }
 @media (prefers-color-scheme: dark) {
-  html[data-theme="auto"] #visualize-ai-panel #viz-message-out { color: #7ec8ff; }
+  html[data-theme="auto"] #visualize-ai-panel #viz-message-out { color: #ffffff; }
 }
 
 /* Hide a whole band when it has no visible content yet (AI not enabled). */
