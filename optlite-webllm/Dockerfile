@@ -48,7 +48,8 @@ RUN pip3 install --break-system-packages -r optlite/requirements.txt \
     && npm run build:prod \
     && test -f build/index.html \
     && test -f build/live.html \
-    && cp sw.js build/ \
+    && BV=$(ls build/*.bundle.*.js 2>/dev/null | sort | sha256sum | cut -c1-16) \
+    && sed "s/__BUILD_VERSION__/${BV:-none}/g" sw.js > build/sw.js \
     && cp manifest.webmanifest build/ \
     && cp -r pwa build/pwa \
     && chmod 644 build/sw.js build/manifest.webmanifest build/pwa/*.png

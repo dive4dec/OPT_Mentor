@@ -52,6 +52,24 @@
                   }
                 });
               }
+              // A NEWER build's sw.js (its BUILD_VERSION changed) is re-fetched by
+              // the browser (sw.js is served no-cache) and installed in the
+              // background while this page is open. skipWaiting + clients.claim
+              // activate it immediately; reload once so the fresh no-store HTML ->
+              // new content-hashed bundle -> new CSS takes over. This is what lets
+              // a returning client self-heal after a deploy WITHOUT clearing its
+              // browser cache. updatefound only fires on a real byte-different SW,
+              // so it can't loop.
+              reg.addEventListener('updatefound', function() {
+                var nw = reg.installing;
+                if (!nw) return;
+                nw.addEventListener('statechange', function() {
+                  if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('[sw] newer build ready - reloading once');
+                    window.location.reload();
+                  }
+                });
+              });
             }).catch(function(err) {
               console.error('[sw] Registration failed:', err);
             });
