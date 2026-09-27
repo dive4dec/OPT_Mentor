@@ -178,6 +178,13 @@ html[data-theme="dark"] #aichatbox #message-out { color: #7ec8ff; }
 @media (prefers-color-scheme: dark) {
   html[data-theme="auto"] #aichatbox #message-out { color: #7ec8ff; }
 }
+/* Default Mode (visualize) response: #viz-message-out is a fixed light-mode
+   blue (opt-frontend.css) that's ~2:1 and unreadable on the dark band. Same
+   dark + auto+system-dark treatment as #message-out above. */
+html[data-theme="dark"] #viz-message-out { color: #7ec8ff; }
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] #viz-message-out { color: #7ec8ff; }
+}
 
 /* Hide a whole band when it has no visible content yet (AI not enabled). */
 .opt-band.opt-hidden { flex: 0 0 0 !important; height: 0 !important; }
