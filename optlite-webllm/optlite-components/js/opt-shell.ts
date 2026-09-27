@@ -90,7 +90,11 @@ function syncBand(band: HTMLElement, pane: HTMLElement) {
 
 function startResizer(resizer: HTMLElement, band: HTMLElement) {
   // Drag the seam between the AI band and the main band to resize the AI band's
-  // height. band is #opt-ai-band (flex: 0 0 auto + explicit height).
+  // height. The AI band is anchored to the BOTTOM of the page, so the seam is
+  // its TOP edge. Moving the finger DOWN (y increases) therefore SHRINKS the
+  // band (h = startH - dy), which pulls the seam down to follow the finger.
+  // (The opposite sign would push the seam up against the finger — the "opposite
+  // to the drag direction" bug.) band is #opt-ai-band (flex: 0 0 auto + height).
   let startY = 0;
   let startH = 0;
   let dragging = false;
@@ -109,11 +113,12 @@ function startResizer(resizer: HTMLElement, band: HTMLElement) {
   const onMove = (e: MouseEvent | TouchEvent) => {
     if (!dragging) return;
     const y = "clientY" in e ? (e as MouseEvent).clientY : (e as TouchEvent).touches[0].clientY;
-    const contentH = resizer.parentElement ? resizer.parentElement.clientHeight : window.innerHeight;
-    let h = startH + (y - startY);
-    h = Math.max(0, Math.min(Math.floor(contentH * 0.8), h)); // clamp
+    const dy = y - startY;
+    let h = startH - dy; // bottom-anchored band: drag down shrinks, up grows
+    h = Math.max(0, Math.min(Math.floor(window.innerHeight * 0.8), h)); // clamp
     band.style.height = h + "px";
-    (e as any).preventDefault && (e as any).preventDefault();
+    // Lock touch to vertical (kill horizontal scroll/pan) and cancel the event.
+    e.cancelable && (e as any).preventDefault && (e as any).preventDefault();
   };
   const onUp = () => {
     if (!dragging) return;

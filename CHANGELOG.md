@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Mobile: dragging the seam between the code/visualizer and the AI chat now
+  moves the boundary in the direction of the finger** (previously inverted —
+  dragging down grew the panel instead of following the finger). The AI band is
+  anchored to the bottom of the page, so the seam is its *top* edge; the
+  resizer math is now bottom-anchored (`h = startH - dy`).
+- **The AI chat panel fills the full horizontal width of its band** (it was
+  capped at the legacy 550px inline width, leaving empty space).
+- **AI response text is brighter in dark mode** (was a fixed light-mode blue /
+  dim inherited color that was hard to read on the dark panel).
+
 ## [0.5.3] - 2026-09-27
 
 ### Fixed

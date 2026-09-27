@@ -160,11 +160,21 @@ body {
 #opt-main-band > .opt-band-inner { flex: 1 1 auto; min-height: 0; }
 #opt-ai-band #visualize-ai-panel,
 #opt-ai-band #aichatbox {
-  width: 100%; height: 100%;
+  width: 100% !important;     /* beat the legacy inline width:550px so the chat fills the whole band */
+  max-width: 100% !important;
+  height: 100%;
   box-sizing: border-box;
   padding: 10px;
   overflow: auto;
 }
+
+/* AI response text: brighten in dark mode. The live response (#message-out)
+   is a fixed light-mode blue (#1a7fd4) and the visualize response
+   (#viz-message-out) inherits the page color — neither reads well on the dark
+   band, so override to a bright, high-contrast color. */
+html[data-theme="dark"] #aichatbox #message-out { color: #7ec8ff; }
+html[data-theme="dark"] #aichatbox #chat-stats { color: #c9d1d9; }
+html[data-theme="dark"] #opt-ai-band #viz-message-out { color: #e6edf3; }
 
 /* Hide a whole band when it has no visible content yet (AI not enabled). */
 .opt-band.opt-hidden { flex: 0 0 0 !important; height: 0 !important; }
