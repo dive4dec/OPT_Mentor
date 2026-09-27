@@ -181,10 +181,11 @@ html[data-theme="dark"] #aichatbox #message-out { color: #7ec8ff; }
 /* Default Mode (visualize) response: #viz-message-out is a fixed light-mode
    blue set by "#visualize-ai-panel #viz-message-out" (2 IDs) — ~2:1, unreadable
    on the dark band. Mirror that 2-ID base so our dark override actually wins on
-   specificity. White in dark (Default Mode response is plain text, not a status color). */
-html[data-theme="dark"] #visualize-ai-panel #viz-message-out { color: #ffffff; }
+   specificity. Light blue in dark, matching the Live-Edit AI response colour
+   (#aichatbox #message-out = #7ec8ff) so both modes read the same. */
+html[data-theme="dark"] #visualize-ai-panel #viz-message-out { color: #7ec8ff; }
 @media (prefers-color-scheme: dark) {
-  html[data-theme="auto"] #visualize-ai-panel #viz-message-out { color: #ffffff; }
+  html[data-theme="auto"] #visualize-ai-panel #viz-message-out { color: #7ec8ff; }
 }
 /* AI panel input fields (chat/API text + password inputs, model select) default
    to browser-white in BOTH themes. In light mode that already matches the white
@@ -193,18 +194,28 @@ html[data-theme="dark"] #visualize-ai-panel #viz-message-out { color: #ffffff; }
    matches the editor in both modes. Covers explicit "dark" AND "auto"+OS-dark
    (data-theme stays "auto" in auto mode, resolved via @media(prefers-...dark)). */
 html[data-theme="dark"] #aichatbox input[type="text"],
+html[data-theme="dark"] #visualize-ai-panel input[type="text"],
 html[data-theme="dark"] #aichatbox input[type="password"],
+html[data-theme="dark"] #visualize-ai-panel input[type="password"],
 html[data-theme="dark"] #aichatbox input:not([type]),
+html[data-theme="dark"] #visualize-ai-panel input:not([type]),
 html[data-theme="dark"] #aichatbox textarea,
-html[data-theme="dark"] #aichatbox select {
+html[data-theme="dark"] #visualize-ai-panel textarea,
+html[data-theme="dark"] #aichatbox select,
+html[data-theme="dark"] #visualize-ai-panel select {
   background-color: #1e1e1e; color: #e6edf3; border-color: #3a3a3a;
 }
 @media (prefers-color-scheme: dark) {
   html[data-theme="auto"] #aichatbox input[type="text"],
+  html[data-theme="auto"] #visualize-ai-panel input[type="text"],
   html[data-theme="auto"] #aichatbox input[type="password"],
+  html[data-theme="auto"] #visualize-ai-panel input[type="password"],
   html[data-theme="auto"] #aichatbox input:not([type]),
+  html[data-theme="auto"] #visualize-ai-panel input:not([type]),
   html[data-theme="auto"] #aichatbox textarea,
-  html[data-theme="auto"] #aichatbox select {
+  html[data-theme="auto"] #visualize-ai-panel textarea,
+  html[data-theme="auto"] #aichatbox select,
+  html[data-theme="auto"] #visualize-ai-panel select {
     background-color: #1e1e1e; color: #e6edf3; border-color: #3a3a3a;
   }
 }

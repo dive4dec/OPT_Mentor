@@ -40,6 +40,17 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   // Pure pass-through: serve the network response as-is (same result a browser
   // would get without a service worker). The /ai-proxy/ SSE stream is unaffected
-  // because fetch(request) preserves streaming.
-  event.respondWith(fetch(event.request));
+  // because fetch(request) preserves streaming (this .catch is a no-op on the
+  // success path — it only runs if the underlying fetch rejects).
+  //
+  // The build-version auto-reload (see *.html templates) calls location.reload(),
+  // which ABORTS any in-flight request. That rejection would otherwise surface as
+  // an unhandled "Uncaught (in promise) TypeError: Failed to fetch" from this
+  // handler (the reported sw.js:44 error). Swallow it as an error response: no
+  // behaviour change for real requests, no red console noise on reload.
+  event.respondWith(
+    fetch(event.request).catch(
+      () => new Response(null, { status: 503, statusText: 'Service Unavailable' })
+    )
+  );
 });
