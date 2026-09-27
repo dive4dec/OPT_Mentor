@@ -7,18 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-09-27
+
+### Fixed
+- **Selected code is now visibly highlighted** in the CodeMirror 6 editor
+  (Default Mode and Live Edit). The editor theme gave `.cm-content` an opaque
+  background, but CM6 draws the text selection as a separate `.cm-selectionLayer`
+  *behind* the content (at a negative `z-index`) — so the selection rendered with
+  the correct color and size yet was painted over and invisible. `.cm-content` is
+  now transparent (the editor background is carried by `.cm-scroller` /
+  `.cm-editor`), so the selection shows through behind the glyphs in both light
+  and dark themes.
+
 ### Changed
-- **Visualize mode: the code pane (`#pyInputPane`) is now left-aligned**, so
-  it lines up with the step pane (`#pyOutputPane`) and the AI panel below it
-  — previously it was centered while the two stayed left. Scoped to the
-  visualize template only; the live page keeps its centered code pane.
+- **Default Mode: the code window spans the full width** of the page
+  (edge-to-edge, left-aligned) with the execution visualizer stacked below it —
+  previously it sat in a narrower centered box.
+- **Live Edit: the code window and visualizer are now side-by-side** — code on
+  the left, visualizer (print output / frames / objects) filling the right.
+- **The AI chat panel moved to the bottom** of the page (was at the top) on both
+  pages; the resizable seam above it drags its height.
+- **The AI response now appears below the "Ask AI" button** (was above it) on
+  both pages, so the controls come first and the answer sits directly underneath.
 
 ### Removed
-- **The "(UNSUPPORTED FEATURES)" tag no longer appears after C++ error
-  messages** in the live and display/visualize error paths. It was a leftover
-  from the original server-based OnlinePythonTutor (remote C compiler with a
-  documented known-limitations list); this build runs in-browser WASM
-  (xeus-cpp), so the tag was pure noise.
+- **The "(UNSUPPORTED FEATURES)" tag no longer appears after error messages**
+  in the live and display/visualize error paths. It was a leftover from the
+  original server-based OnlinePythonTutor (remote compiler with a documented
+  known-limitations list); this build runs in-browser, so the tag was pure noise.
 
 ## [0.5.2] - 2026-08-31
 
