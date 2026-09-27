@@ -173,6 +173,12 @@ body {
    (#viz-message-out) inherits the page color — neither reads well on the dark
    band, so override to a bright, high-contrast color. */
 html[data-theme="dark"] #aichatbox #message-out { color: #7ec8ff; }
+/* Auto mode + OS dark: data-theme stays "auto" (only the
+   @media(prefers-color-scheme: dark) guard resolves it), so the dark rule above
+   never applied and the response stayed the default light-mode blue. */
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] #aichatbox #message-out { color: #7ec8ff; }
+}
 html[data-theme="dark"] #aichatbox #chat-stats { color: #c9d1d9; }
 html[data-theme="dark"] #opt-ai-band #viz-message-out { color: #e6edf3; }
 
