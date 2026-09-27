@@ -155,7 +155,7 @@ export function initOptShell(cfg: OptShellConfig) {
     b.addEventListener("click", () => { if (target !== cfg.page) cfg.navigate(target); });
     return b;
   };
-  tabs.appendChild(mkTab("Visualize", "visualize"));
+  tabs.appendChild(mkTab("Default Mode", "visualize"));
   tabs.appendChild(mkTab("Live Edit", "live"));
 
   const spacer = document.createElement("span");
@@ -181,7 +181,9 @@ export function initOptShell(cfg: OptShellConfig) {
   themeBtn.id = "opt-theme";
   const syncThemeBtn = () => {
     const t = currentTheme();
-    themeBtn.innerHTML = '<span class="opt-ico">' + themeIcon(t) + '</span><span>' + themeLabel(t) + "</span>";
+    // Icon-only (no label — keeps the nav compact); the current setting is
+    // surfaced via the tooltip so hovering explains it.
+    themeBtn.innerHTML = '<span class="opt-ico">' + themeIcon(t) + '</span>';
     themeBtn.title = "Theme: " + themeLabel(t) + " (click to change)";
   };
   themeBtn.addEventListener("click", () => { cycleTheme(currentTheme()); syncThemeBtn(); });
@@ -224,6 +226,7 @@ export function initOptShell(cfg: OptShellConfig) {
   // #opt-shell wrapper so the flex column fills the viewport.
   const shell = document.createElement("div");
   shell.id = "opt-shell";
+  shell.setAttribute("data-page", cfg.page); // "visualize" | "live" — lets CSS scope page-specific layout
   document.body.insertBefore(shell, document.body.firstChild);
   shell.appendChild(navbar);
   shell.appendChild(content);

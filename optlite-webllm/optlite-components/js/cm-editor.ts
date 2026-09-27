@@ -321,6 +321,12 @@ export class OptCmEditor {
         overflow: "auto",
       },
       ".cm-content": { padding: "4px 0", caretColor: "#333" },
+      // CM6 renders the selection as .cm-selectionBackground spans (NOT the
+      // browser ::selection), and a custom baseTheme replaces the default one
+      // that normally styles it — so set the color here to guarantee a visible
+      // highlight. The var flips with the app theme (opt-theme.css): #c8e1ff
+      // (light) / #264f78 (dark).
+      ".cm-selectionBackground": { backgroundColor: "var(--opt-editor-selection, #c8e1ff)" },
       ".cm-gutters": {
         backgroundColor: "#f7f7f7",
         borderRight: "1px solid #e1e4e5",

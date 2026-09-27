@@ -94,7 +94,7 @@ export function cycleTheme(from: OptTheme): OptTheme {
 
 // Human-facing label for the current setting (used in the tooltip).
 export function themeLabel(t: OptTheme): string {
-  return t === "auto" ? "Auto (follow system)" : (t === "dark" ? "Dark" : "Light");
+  return t === "auto" ? "Auto" : (t === "dark" ? "Dark" : "Light");
 }
 
 // Hook a CodeMirror-6 editor (anything exposing setThemeDark(dark)) to theme
