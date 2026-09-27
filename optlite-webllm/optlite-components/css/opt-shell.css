@@ -168,19 +168,16 @@ body {
   overflow: auto;
 }
 
-/* AI response text: brighten in dark mode. The live response (#message-out)
-   is a fixed light-mode blue (#1a7fd4) and the visualize response
-   (#viz-message-out) inherits the page color — neither reads well on the dark
-   band, so override to a bright, high-contrast color. */
+/* AI response text: brighten in dark mode. The live response (#message-out) is
+   a fixed light-mode blue (#1a7fd4) that's hard to read on the dark band. Covers
+   BOTH the explicit "dark" setting AND "auto" when the OS requests dark: in auto
+   mode data-theme stays "auto", so the @media(prefers-color-scheme: dark) guard
+   is what resolves it (same pattern as opt-theme.css / opt-viz-theme.css). */
 html[data-theme="dark"] #aichatbox #message-out { color: #7ec8ff; }
-/* Auto mode + OS dark: data-theme stays "auto" (only the
-   @media(prefers-color-scheme: dark) guard resolves it), so the dark rule above
-   never applied and the response stayed the default light-mode blue. */
+/* Auto mode + OS dark (see note above). */
 @media (prefers-color-scheme: dark) {
   html[data-theme="auto"] #aichatbox #message-out { color: #7ec8ff; }
 }
-html[data-theme="dark"] #aichatbox #chat-stats { color: #c9d1d9; }
-html[data-theme="dark"] #opt-ai-band #viz-message-out { color: #e6edf3; }
 
 /* Hide a whole band when it has no visible content yet (AI not enabled). */
 .opt-band.opt-hidden { flex: 0 0 0 !important; height: 0 !important; }
