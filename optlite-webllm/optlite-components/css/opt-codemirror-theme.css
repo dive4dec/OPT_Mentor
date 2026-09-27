@@ -35,7 +35,13 @@
   font-family: inherit;
 }
 .cm-editor .cm-content {
-  background: var(--opt-editor-bg);
+  /* CRITICAL: the content layer must stay TRANSPARENT. CM6 paints the text
+     selection as a separate .cm-selectionLayer BEHIND .cm-content (the selection
+     layer sits at a negative z-index). If .cm-content had an opaque background
+     it would paint over the selection and it would be invisible (this was the
+     "selected text not highlighted" bug). The editor background is carried by
+     .cm-scroller / .cm-editor below, so transparency here is safe. */
+  background: transparent;
   color: var(--opt-editor-text);
   caret-color: var(--opt-editor-cursor);
 }

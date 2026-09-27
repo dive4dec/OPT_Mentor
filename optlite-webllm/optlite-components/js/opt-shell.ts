@@ -259,15 +259,14 @@ export function initOptShell(cfg: OptShellConfig) {
     mainInner.appendChild(node);
   });
 
-  // --- code (left) + visualizer (right) side by side, both pages ------------
-  // The visualization should sit to the RIGHT of the code window (in the
-  // current layout it's on the left). #pyInputPane (code) and #pyOutputPane
-  // (visualizer) sit in mainInner interleaved with (hidden) stray nodes (the
-  // legacy <table>, optionsPane). Wrap JUST those two in a dedicated row so
-  // they lay out side-by-side — code left, visualizer right — without the
-  // strays breaking the flex. The row is a horizontal flex in CSS. Applied to
-  // both pages (they share this shell structure and the viz is width-adaptive).
-  if (pyInput && pyOutput) {
+  // --- live page: code (left) + visualizer (right) side by side -------------
+  // Requested for Live Edit: the visualization sits to the RIGHT of the code
+  // window. On Default Mode the code window stays FULL WIDTH and the viz stacks
+  // below it (no wrapper). #pyInputPane (code) and #pyOutputPane (visualizer)
+  // sit in mainInner interleaved with (hidden) stray nodes; wrap JUST those two
+  // in a dedicated row (live page only) so they lay out side-by-side without the
+  // strays breaking the flex. Styled as a horizontal flex in CSS.
+  if (cfg.page === "live" && pyInput && pyOutput) {
     const row = document.createElement("div");
     row.className = "opt-workspace-row";
     mainInner.insertBefore(row, mainInner.firstChild);
