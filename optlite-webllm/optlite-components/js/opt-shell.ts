@@ -143,6 +143,62 @@ function startResizer(resizer: HTMLElement, band: HTMLElement) {
   resizer.addEventListener("dblclick", () => { band.style.height = ""; });
 }
 
+// Horizontal drag seam BETWEEN the code column (left, #pyInputPane) and the
+// visualizer column (right, #pyOutputPane) in the Live Edit workspace row.
+// Mirrors startResizer() but on the X axis: dragging LEFT shrinks the code
+// column, dragging RIGHT widens it; the visualizer (flex:1) takes the rest.
+function startVResizer(resizer: HTMLElement, pane: HTMLElement) {
+  let startX = 0;
+  let startW = 0;
+  let dragging = false;
+
+  const onDown = (e: MouseEvent | TouchEvent) => {
+    const x = "clientX" in e ? (e as MouseEvent).clientX : (e as TouchEvent).touches[0].clientX;
+    startX = x;
+    startW = pane.offsetWidth;
+    dragging = true;
+    resizer.classList.add("opt-dragging");
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+    (e as any).preventDefault && (e as any).preventDefault();
+  };
+  const onMove = (e: MouseEvent | TouchEvent) => {
+    if (!dragging) return;
+    const x = "clientX" in e ? (e as MouseEvent).clientX : (e as TouchEvent).touches[0].clientX;
+    let w = startW + (x - startX); // seam follows the finger horizontally
+    const min = 260;                                   // keep the editor usable (matches CSS min-width)
+    const max = Math.floor(window.innerWidth * 0.85);  // keep the viz usable
+    w = Math.max(min, Math.min(max, w));
+    // Inline width MUST be !important: the shared base rule
+    // (#opt-main-band .opt-band-inner #pyInputPane { width:100% !important })
+    // otherwise wins the cascade and the drag would do nothing.
+    pane.style.setProperty("width", w + "px", "important");
+    // Lock touch to horizontal and cancel (kills vertical page scroll).
+    e.cancelable && (e as any).preventDefault && (e as any).preventDefault();
+  };
+  const onUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    resizer.classList.remove("opt-dragging");
+    document.body.style.userSelect = "";
+    document.body.style.cursor = "";
+    // The visualization draws its connectors against its container width and
+    // only recomputes on a window resize — fire one so the diagram re-lays-out
+    // at the new width.
+    window.dispatchEvent(new Event("resize"));
+  };
+
+  resizer.addEventListener("mousedown", onDown);
+  resizer.addEventListener("touchstart", onDown, { passive: false });
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("touchmove", onMove, { passive: false });
+  document.addEventListener("mouseup", onUp);
+  document.addEventListener("touchend", onUp);
+
+  // Double-click the seam to reset the code column to its default width.
+  resizer.addEventListener("dblclick", () => { pane.style.width = ""; });
+}
+
 export function initOptShell(cfg: OptShellConfig) {
   if (ready) return;
   ready = true;
@@ -276,7 +332,17 @@ export function initOptShell(cfg: OptShellConfig) {
     row.className = "opt-workspace-row";
     mainInner.insertBefore(row, mainInner.firstChild);
     row.appendChild(pyInput);   // -> left
+
+    // Vertical drag seam between the code column and the visualizer: drag to
+    // resize the code window's width, double-click to reset.
+    const vResizer = document.createElement("div");
+    vResizer.className = "opt-resizer-v";
+    vResizer.title = "Drag to resize the code window (double-click to reset)";
+    vResizer.style.touchAction = "none"; // keep touch drags on the seam, not the page
+    row.appendChild(vResizer);
+
     row.appendChild(pyOutput);  // -> right
+    startVResizer(vResizer, pyInput);
   }
 
   // --- keep AI band visibility in sync with its pane (MutationObserver) -----

@@ -132,12 +132,19 @@ body {
   min-height: 0;
   height: 100%;
 }
-/* Code column: fixed width, scrolls internally. */
+/* Code column: fixed width by default, scrolls internally. width is !important
+   ONLY to beat the shared base rule (#opt-main-band .opt-band-inner #pyInputPane {
+   width:100% !important }) that makes the code fill the band in Default Mode —
+   the live rule wins on higher specificity (2 ID + attr + class vs 3 ID). The
+   drag seam (opt-shell.ts) resizes it via an INLINE `width: …px !important`
+   (setProperty with the "important" flag), which outranks every stylesheet rule.
+   min-width 260px = the resizer's clamp in JS (kept in sync). No max-width:
+   the user can drag the editor wide (the base max-width:100% !important still
+   caps it at the band, which is larger than the JS max). */
 #opt-shell[data-page="live"] .opt-workspace-row #pyInputPane {
   flex: 0 0 auto;
   width: 550px !important;
   min-width: 260px;
-  max-width: 700px !important;
   height: auto !important;
   margin: 0 !important;
   overflow: auto;
@@ -153,6 +160,34 @@ body {
   height: auto !important;
   max-width: 100% !important;
 }
+
+/* ---- vertical drag seam (Live Edit: code | visualizer boundary) ---------- */
+.opt-resizer-v {
+  flex: 0 0 auto;
+  width: 6px;
+  margin: 0 -3px;             /* overlap the row's gap so there's no dead zone */
+  background: var(--opt-border-soft);
+  border-left: 1px solid var(--opt-border);
+  border-right: 1px solid var(--opt-border);
+  cursor: col-resize;
+  z-index: 6;
+  transition: background .12s;
+  position: relative;
+  touch-action: none;         /* touch: drag the seam, never scroll the page */
+}
+.opt-resizer-v::after {
+  content: "";
+  position: absolute; left: 50%; top: 50%;
+  width: 3px; height: 42px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: var(--opt-border);
+  opacity: .8;
+}
+.opt-resizer-v:hover,
+.opt-resizer-v.opt-dragging { background: var(--opt-accent); }
+.opt-resizer-v:hover::after,
+.opt-resizer-v.opt-dragging::after { background: #fff; }
 
 /* AI band host */
 .opt-band > .opt-band-inner { width: 100%; height: 100%; }
