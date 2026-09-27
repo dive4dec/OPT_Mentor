@@ -40,6 +40,11 @@
 
 require('../css/opt-frontend.css');
 require('../css/opt-live.css');
+// New UI: theme tokens, layout shell, and CM6 theming.
+require('../css/opt-theme.css');
+require('../css/opt-shell.css');
+require('../css/opt-codemirror-theme.css');
+require('../css/opt-viz-theme.css');
 
 // 2025-03-05: pack webllm.ts to bundle
 require('./webllm');
@@ -54,6 +59,8 @@ import { ExecutionVisualizer, assert, brightRed, darkArrowColor, lightArrowColor
 import { allTabsRE } from './opt-frontend';
 import { asyncRun, pyComplete } from './pyodide/runner';
 import { nullTraceErrorLst } from './footer-html';
+import { initOptShell } from './opt-shell';
+import { bindEditorTheme } from './theme';
 import * as d3 from 'd3';
 import { OptCmEditor } from './cm-editor';
 
@@ -709,6 +716,27 @@ export class OptLiveFrontend extends OptFrontend {
 $(document).ready(function () {
   optLiveFrontend = new OptLiveFrontend({});
   //optLiveFrontend.setSurveyHTML(); // 2019-04-09 take survey off this page
+
+  // Shareable permalink for the current live state (full URL + #state).
+  const buildPermalink = () => {
+    const myArgs = (optLiveFrontend as any).getAppState();
+    let urlStr = $.param.fragment(window.location.href, myArgs, 2); // 2 = override
+    return String(urlStr).replace(/\(/g, "%28").replace(/\)/g, "%29");
+  };
+
+  initOptShell({
+    page: "live",
+    brand: "OPT Mentor",
+    aiPaneId: "aichatbox",
+    buildPermalink,
+    navigate: (target) => {
+      if (target === "visualize") (optLiveFrontend as any).openVisualizeUrl();
+      else (optLiveFrontend as any).openLiveModeUrl();
+    },
+  });
+
+  // Re-paint the CM6 editor's token colors whenever the theme changes.
+  bindEditorTheme((optLiveFrontend as any).pyInputAceEditor);
 }
 
 /* // set default code if there is node 'code' parameter in the hash

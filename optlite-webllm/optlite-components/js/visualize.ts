@@ -6,9 +6,16 @@ import { assert, htmlspecialchars } from './pytutor';
 import { OptTestcases, redSadFace, yellowHappyFace } from './opt-testcases';
 import { OptFrontend } from './opt-frontend';
 import { initVisualizeAI } from './visualize-ai';
+import { initOptShell } from './opt-shell';
+import { bindEditorTheme } from './theme';
 require('./lib/jquery-3.0.0.min.js');
 require('./lib/jquery.qtip.js');
 require('../css/jquery.qtip.css');
+// New UI: theme tokens, layout shell, and CM6 theming.
+require('../css/opt-theme.css');
+require('../css/opt-shell.css');
+require('../css/opt-codemirror-theme.css');
+require('../css/opt-viz-theme.css');
 
 // const {
 //   PYODIDE_VERSION,
@@ -698,4 +705,29 @@ $(document).ready(function () {
   }
 
   $("#liveModeBtn").click(optFrontend.openLiveModeUrl.bind(optFrontend));
+
+  // Build the shareable permalink for the current app state (same format the
+  // old Permalink button produced: full URL + #state, parens escaped).
+  const buildPermalink = () => {
+    const myArgs = optFrontend.getAppState();
+    let urlStr = $.param.fragment(window.location.href, myArgs, 2); // 2 = override
+    return String(urlStr).replace(/\(/g, "%28").replace(/\)/g, "%29");
+  };
+
+  // New layout shell: pinned nav bar (mode tabs + permalink + theme) +
+  // resizable bands (AI chat on top, code/visualizer below). Runs last so all
+  // legacy ID-based handlers are already bound before we relocate nodes.
+  initOptShell({
+    page: "visualize",
+    brand: "OPT Mentor",
+    aiPaneId: "visualize-ai-panel",
+    buildPermalink,
+    navigate: (target) => {
+      if (target === "live") optFrontend.openLiveModeUrl();
+      else optFrontend.openVisualizeUrl();
+    },
+  });
+
+  // Re-paint the CM6 editor's token colors whenever the theme changes.
+  bindEditorTheme((optFrontend as any).pyInputAceEditor);
 });

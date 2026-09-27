@@ -1,0 +1,125 @@
+/* ============================================================================
+ * OPT Mentor — CodeMirror 6 theming
+ * ----------------------------------------------------------------------------
+ * CM6 uses CSS variables for most of its chrome, so pointing them at the
+ * shared --opt-editor-* tokens (defined in opt-theme.css) gives a full
+ * light/dark editor with zero JS. The syntax *token colors* come from a
+ * HighlightStyle in cm-editor.ts; the LIGHT style is kept there (unchanged),
+ * and for dark mode we override the token spans here so the same prebuilt
+ * style renders with dark-appropriate colors without a rebuild.
+ *
+ * CM6 token classes (from @lezer/highlight, via HighlightStyle):
+ *   .cm-keyword  -> tags.keyword / operatorKeyword / controlKeyword / ...
+ *   .cm-number   -> tags.number
+ *   .cm-string   -> tags.string
+ *   .cm-comment  -> tags.comment / lineComment / blockComment
+ *   .cm-variable -> tags.variableName (CM6 does NOT split .cm-variableName)
+ *   .cm-atom     -> tags.atom (bool, null, ...)
+ *   .cm-def      -> tags.definitionName
+ *   .cm-property -> tags.propertyName
+ *   .cm-type     -> tags.className / typeName
+ *   .cm-meta, .cm-operator, .cm-bracket
+ * ==========================================================================*/
+
+/* Editor base chrome -> shared tokens */
+.cm-editor {
+  background: var(--opt-editor-bg);
+  color: var(--opt-editor-text);
+  font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas,
+               "DejaVu Sans Mono", Menlo, monospace;
+  font-size: 13px;
+}
+.cm-editor .cm-scroller {
+  background: var(--opt-editor-bg);
+  color: var(--opt-editor-text);
+  font-family: inherit;
+}
+.cm-editor .cm-content {
+  background: var(--opt-editor-bg);
+  color: var(--opt-editor-text);
+  caret-color: var(--opt-editor-cursor);
+}
+.cm-editor .cm-gutters {
+  background: var(--opt-editor-gutter-bg);
+  color: var(--opt-editor-gutter-fg);
+  border-right: 1px solid var(--opt-border-soft);
+}
+.cm-editor .cm-lineNumbers .cm-gutterElement,
+.cm-editor .cm-lineNumbers .cm-gutterElement span {
+  color: var(--opt-editor-gutter-fg);
+}
+.cm-editor .cm-activeLine {
+  background: var(--opt-editor-active-line);
+}
+.cm-editor .cm-activeLineGutter {
+  background: var(--opt-editor-active-line);
+}
+.cm-editor .cm-cursor { border-left-color: var(--opt-editor-cursor); }
+.cm-editor .cm-selectionBackground,
+.cm-editor ::selection,
+.cm-editor .cm-selectionBackground {
+  background: var(--opt-editor-selection) !important;
+}
+.cm-editor .cm-panels {
+  background: var(--opt-bg-panel);
+  color: var(--opt-text);
+  border-color: var(--opt-border);
+}
+.cm-editor .cm-panels.cm-panels-top { border-bottom: 1px solid var(--opt-border); }
+.cm-editor .cm-panels.cm-panels-bottom { border-top: 1px solid var(--opt-border); }
+.cm-editor .cm-tooltip {
+  background: var(--opt-bg-panel);
+  border: 1px solid var(--opt-border);
+  color: var(--opt-text);
+}
+.cm-editor .cm-tooltip-autocomplete ul li[aria-selected] {
+  background: var(--opt-editor-selection);
+  color: var(--opt-text);
+}
+.cm-editor .cm-tooltip-autocomplete ul li {
+  color: var(--opt-text);
+}
+.cm-editor .cm-foldPlaceholder {
+  background: var(--opt-bg-panel);
+  color: var(--opt-text-dim);
+  border: 1px solid var(--opt-border);
+}
+.cm-editor .cm-matchingBracket,
+.cm-editor .cm-nonmatchingBracket {
+  background: var(--opt-editor-selection);
+}
+
+/* Error line highlight (setErrorLine uses a full-line background) */
+.cm-editor .cm-errorLine {
+  background: var(--opt-editor-error-bg);
+}
+
+/* ---- dark-mode token overrides (applied on top of the light HighlightStyle) */
+html[data-theme="dark"] .cm-editor .cm-keyword,
+html[data-theme="dark"] .cm-editor .cm-operatorKeyword,
+html[data-theme="dark"] .cm-editor .cm-controlKeyword,
+html[data-theme="dark"] .cm-editor .cm-moduleKeyword,
+html[data-theme="dark"] .cm-editor .cm-definitionKeyword { color: #569cd6; }
+html[data-theme="dark"] .cm-editor .cm-number { color: #b5cea8; }
+html[data-theme="dark"] .cm-editor .cm-atom,
+html[data-theme="dark"] .cm-editor .cm-bool { color: #569cd6; }
+html[data-theme="dark"] .cm-editor .cm-string,
+html[data-theme="dark"] .cm-editor .cm-string2 { color: #ce9178; }
+html[data-theme="dark"] .cm-editor .cm-comment,
+html[data-theme="dark"] .cm-editor .cm-lineComment,
+html[data-theme="dark"] .cm-editor .cm-blockComment { color: #6a9955; }
+html[data-theme="dark"] .cm-editor .cm-variable,
+html[data-theme="dark"] .cm-editor .cm-variableName,
+html[data-theme="dark"] .cm-editor .cm-property { color: #9cdcfe; }
+html[data-theme="dark"] .cm-editor .cm-def,
+html[data-theme="dark"] .cm-editor .cm-definitionName { color: #9cdcfe; }
+html[data-theme="dark"] .cm-editor .cm-type,
+html[data-theme="dark"] .cm-editor .cm-typeName,
+html[data-theme="dark"] .cm-editor .cm-className { color: #4ec9b0; }
+html[data-theme="dark"] .cm-editor .cm-meta { color: #c586c0; }
+html[data-theme="dark"] .cm-editor .cm-operator { color: #d4d4d4; }
+html[data-theme="dark"] .cm-editor .cm-bracket { color: #d4d4d4; }
+html[data-theme="dark"] .cm-editor .cm-tag { color: #569cd6; }
+html[data-theme="dark"] .cm-editor .cm-attribute { color: #9cdcfe; }
+html[data-theme="dark"] .cm-editor .cm-link { color: #4ec9b0; text-decoration: underline; }
+html[data-theme="dark"] .cm-editor .cm-invalidchar { color: #f48771; }

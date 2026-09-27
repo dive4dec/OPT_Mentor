@@ -1,0 +1,164 @@
+/* ============================================================================
+ * OPT Mentor — visualization dark-mode theming
+ * ----------------------------------------------------------------------------
+ * pytutor.css hard-codes light colors (white frames, #ffffc6 object boxes,
+ * dark text, default light buttons) under `div.ExecutionVisualizer`. In dark
+ * mode those become unreadable (light text inherits from the dark theme onto
+ * white boxes). We re-declare the colors under html[data-theme="dark"] so
+ * they win on specificity (the leading `html[data-theme="dark"]` adds an
+ * element + an attribute to every selector, beating the original even though
+ * style-loader injects these files after the legacy sheets).
+ *
+ * "auto" is the same set repeated inside @media (prefers-color-scheme: dark).
+ * ==========================================================================*/
+
+/* ==================== EXPLICIT DARK ===================================== */
+html[data-theme="dark"] div.ExecutionVisualizer {
+  background-color: var(--viz-bg);
+  color: var(--viz-code-line-fg);
+}
+html[data-theme="dark"] div.ExecutionVisualizer div.stackFrame,
+html[data-theme="dark"] div.ExecutionVisualizer div.zombieStackFrame {
+  background-color: var(--viz-frame-bg);
+  color: var(--viz-code-line-fg);
+}
+html[data-theme="dark"] div.ExecutionVisualizer div.highlightedStackFrame {
+  background-color: var(--viz-frame-header-bg);
+}
+html[data-theme="dark"] div.ExecutionVisualizer div.stackFrameHeader {
+  color: var(--viz-frame-header-fg);
+}
+html[data-theme="dark"] div.ExecutionVisualizer td.stackFrameValue {
+  border-bottom-color: var(--viz-panel-border);
+  border-left-color: var(--viz-panel-border);
+  color: var(--viz-code-line-fg);
+}
+html[data-theme="dark"] div.ExecutionVisualizer .objectIdLabel,
+html[data-theme="dark"] div.ExecutionVisualizer .typeLabel {
+  color: var(--viz-code-line-fg);
+}
+html[data-theme="dark"] div.ExecutionVisualizer #pyStdout {
+  background-color: var(--viz-stdout-bg);
+  color: var(--viz-stdout-text);
+  border-color: var(--viz-panel-border);
+}
+html[data-theme="dark"] div.ExecutionVisualizer table#pyCodeOutput,
+html[data-theme="dark"] div.ExecutionVisualizer table#pyCodeOutput td {
+  color: var(--viz-code-line-fg);
+}
+html[data-theme="dark"] div.ExecutionVisualizer table.listTbl,
+html[data-theme="dark"] div.ExecutionVisualizer table.tupleTbl,
+html[data-theme="dark"] div.ExecutionVisualizer table.setTbl,
+html[data-theme="dark"] div.ExecutionVisualizer table.cArrayTbl,
+html[data-theme="dark"] div.ExecutionVisualizer table.queueTbl,
+html[data-theme="dark"] div.ExecutionVisualizer table.stackTbl {
+  background-color: var(--viz-object-bg);
+  color: var(--viz-code-line-fg);
+}
+html[data-theme="dark"] div.ExecutionVisualizer table.instTbl td.instVal,
+html[data-theme="dark"] div.ExecutionVisualizer table.classTbl td.classVal,
+html[data-theme="dark"] div.ExecutionVisualizer td.funcCod {
+  background-color: var(--viz-object-bg);
+  color: var(--viz-code-line-fg);
+}
+/* step-control buttons + input (were default light browser widgets) */
+html[data-theme="dark"] div.ExecutionVisualizer #vcrControls button,
+html[data-theme="dark"] div.ExecutionVisualizer #raw_input_submit_btn {
+  background: var(--opt-bg-panel);
+  color: var(--opt-text);
+  border: 1px solid var(--opt-border);
+  border-radius: 5px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+html[data-theme="dark"] div.ExecutionVisualizer #vcrControls button:hover,
+html[data-theme="dark"] div.ExecutionVisualizer #raw_input_submit_btn:hover {
+  background: var(--opt-btn-bg-hover);
+  border-color: var(--opt-accent);
+}
+html[data-theme="dark"] div.ExecutionVisualizer #curInstr { color: var(--opt-text); }
+html[data-theme="dark"] div.ExecutionVisualizer #executionSliderCaption { color: var(--opt-text-dim); }
+/* jQuery UI slider: #executionSlider IS the .ui-slider (track); handle inside */
+html[data-theme="dark"] div.ExecutionVisualizer #executionSlider.ui-slider,
+html[data-theme="dark"] div.ExecutionVisualizer #executionSlider {
+  background: var(--opt-border);
+  border: 1px solid var(--opt-border);
+}
+html[data-theme="dark"] div.ExecutionVisualizer #executionSlider .ui-slider-handle {
+  background: var(--opt-btn-bg-hover);
+  border: 2px solid var(--opt-accent);
+  cursor: pointer;
+}
+html[data-theme="dark"] div.ExecutionVisualizer .ui-icon { filter: invert(0.85); }
+
+/* ============ AUTO (OS dark) — same palette under the media guard ======= */
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] div.ExecutionVisualizer {
+    background-color: var(--viz-bg);
+    color: var(--viz-code-line-fg);
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer div.stackFrame,
+  html[data-theme="auto"] div.ExecutionVisualizer div.zombieStackFrame {
+    background-color: var(--viz-frame-bg);
+    color: var(--viz-code-line-fg);
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer div.highlightedStackFrame {
+    background-color: var(--viz-frame-header-bg);
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer div.stackFrameHeader {
+    color: var(--viz-frame-header-fg);
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer td.stackFrameValue {
+    border-bottom-color: var(--viz-panel-border);
+    border-left-color: var(--viz-panel-border);
+    color: var(--viz-code-line-fg);
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer .objectIdLabel,
+  html[data-theme="auto"] div.ExecutionVisualizer .typeLabel {
+    color: var(--viz-code-line-fg);
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer #pyStdout {
+    background-color: var(--viz-stdout-bg);
+    color: var(--viz-stdout-text);
+    border-color: var(--viz-panel-border);
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer table#pyCodeOutput,
+  html[data-theme="auto"] div.ExecutionVisualizer table#pyCodeOutput td {
+    color: var(--viz-code-line-fg);
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer table.listTbl,
+  html[data-theme="auto"] div.ExecutionVisualizer table.tupleTbl,
+  html[data-theme="auto"] div.ExecutionVisualizer table.setTbl,
+  html[data-theme="auto"] div.ExecutionVisualizer table.cArrayTbl,
+  html[data-theme="auto"] div.ExecutionVisualizer table.queueTbl,
+  html[data-theme="auto"] div.ExecutionVisualizer table.stackTbl {
+    background-color: var(--viz-object-bg);
+    color: var(--viz-code-line-fg);
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer table.instTbl td.instVal,
+  html[data-theme="auto"] div.ExecutionVisualizer table.classTbl td.classVal,
+  html[data-theme="auto"] div.ExecutionVisualizer td.funcCod {
+    background-color: var(--viz-object-bg);
+    color: var(--viz-code-line-fg);
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer #vcrControls button,
+  html[data-theme="auto"] div.ExecutionVisualizer #raw_input_submit_btn {
+    background: var(--opt-bg-panel);
+    color: var(--opt-text);
+    border: 1px solid var(--opt-border);
+    border-radius: 5px;
+    padding: 3px 9px;
+    cursor: pointer;
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer #curInstr { color: var(--opt-text); }
+  html[data-theme="auto"] div.ExecutionVisualizer #executionSliderCaption { color: var(--opt-text-dim); }
+  html[data-theme="auto"] div.ExecutionVisualizer #executionSlider.ui-slider {
+    background: var(--opt-border);
+    border: 1px solid var(--opt-border);
+  }
+  html[data-theme="auto"] div.ExecutionVisualizer #executionSlider .ui-slider-handle {
+    background: var(--opt-btn-bg-hover);
+    border: 2px solid var(--opt-accent);
+    cursor: pointer;
+  }
+}

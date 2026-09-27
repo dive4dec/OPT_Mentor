@@ -1,0 +1,180 @@
+/* ============================================================================
+ * OPT Mentor — theme system (light / dark / auto)
+ * ----------------------------------------------------------------------------
+ * Everything color-related that can be expressed with CSS custom properties
+ * lives here. The theme is selected by a `data-theme` attribute on <html>:
+ *   - "light"  -> light tokens below
+ *   - "dark"   -> dark tokens (explicit)
+ *   - "auto"   -> follows prefers-color-scheme (light by default, dark when the
+ *                 OS asks for dark). "auto" resolves to the dark token block
+ *                 ONLY inside the @media(prefers-color-scheme: dark) guard.
+ *
+ * The legacy pytutor.css / opt-frontend.css define their own light colors with
+ * high specificity in places; where a rule matters for dark mode we re-declare
+ * it under html[data-theme="dark"] with a leading html[...]/:root scope so it
+ * wins on specificity + source order (style-loader injects this file after the
+ * legacy sheets at runtime).
+ * ==========================================================================*/
+
+:root,
+html[data-theme="light"] {
+  /* app chrome */
+  --opt-bg: #ffffff;
+  --opt-bg-panel: #f7f8fa;
+  --opt-bg-inset: #ffffff;
+  --opt-text: #1f2937;
+  --opt-text-dim: #6b7280;
+  --opt-border: #d4d4d4;
+  --opt-border-soft: #e5e7eb;
+  --opt-accent: #30b0f0;
+
+  /* navbar */
+  --opt-navbar-bg: #f9fafb;
+  --opt-navbar-border: #d4d4d4;
+  --opt-navbar-text: #1f2937;
+  --opt-navbar-tab-active-bg: #ffffff;
+  --opt-navbar-tab-active-border: #30b0f0;
+
+  /* buttons */
+  --opt-btn-bg: #ffffff;
+  --opt-btn-bg-hover: #f0f0f0;
+  --opt-btn-border: #cfcfcf;
+  --opt-btn-text: #1f2937;
+  --opt-btn-primary-bg: #2f9ce0;
+  --opt-btn-primary-text: #ffffff;
+
+  /* code editor (CM6) */
+  --opt-editor-bg: #ffffff;
+  --opt-editor-text: #1f2937;
+  --opt-editor-gutter-bg: #f2f3f5;
+  --opt-editor-gutter-fg: #9ca3af;
+  --opt-editor-active-line: #f5f6f8;
+  --opt-editor-cursor: #24292f;
+  --opt-editor-selection: #c8e1ff;
+  --opt-editor-error-bg: rgba(233, 63, 52, 0.10);
+
+  /* AI chat band */
+  --opt-ai-bg: #f7f9fc;
+  --opt-ai-border: #d0e0ff;
+  --opt-ai-user: #e3f2fd;
+  --opt-ai-assistant: #ffffff;
+
+  /* visualization */
+  --viz-bg: #ffffff;
+  --viz-stdout-bg: #ffffff;
+  --viz-stdout-text: #1f2937;
+  --viz-code-line-fg: #1f2937;
+  --viz-frame-header-bg: #e2ebf6;
+  --viz-frame-header-fg: #1f2937;
+  --viz-frame-bg: #ffffff;
+  --viz-object-bg: #ffffc6;
+  --viz-object-label-bg: #dcdca8;
+  --viz-heap-bg: #fafafa;
+  --viz-legend-bg: #ffffff;
+  --viz-panel-border: #cccccc;
+}
+
+html[data-theme="dark"] {
+  --opt-bg: #0d1117;
+  --opt-bg-panel: #161b22;
+  --opt-bg-inset: #0d1117;
+  --opt-text: #e6edf3;
+  --opt-text-dim: #94a3b8;
+  --opt-border: #30363d;
+  --opt-border-soft: #21262d;
+  --opt-accent: #38bdf8;
+
+  --opt-navbar-bg: #161b22;
+  --opt-navbar-border: #30363d;
+  --opt-navbar-text: #e6edf3;
+  --opt-navbar-tab-active-bg: #21262d;
+  --opt-navbar-tab-active-border: #38bdf8;
+
+  --opt-btn-bg: #21262d;
+  --opt-btn-bg-hover: #30363d;
+  --opt-btn-border: #3a414b;
+  --opt-btn-text: #e6edf3;
+  --opt-btn-primary-bg: #2f81c7;
+  --opt-btn-primary-text: #ffffff;
+
+  --opt-editor-bg: #1e1e1e;
+  --opt-editor-text: #e6edf3;
+  --opt-editor-gutter-bg: #1e1e1e;
+  --opt-editor-gutter-fg: #6b7280;
+  --opt-editor-active-line: #262b33;
+  --opt-editor-cursor: #e6edf3;
+  --opt-editor-selection: #264f78;
+  --opt-editor-error-bg: rgba(248, 81, 73, 0.18);
+
+  --opt-ai-bg: #101720;
+  --opt-ai-border: #22405e;
+  --opt-ai-user: #173049;
+  --opt-ai-assistant: #161b22;
+
+  --viz-bg: #0d1117;
+  --viz-stdout-bg: #0d1117;
+  --viz-stdout-text: #e6edf3;
+  --viz-code-line-fg: #e6edf3;
+  --viz-frame-header-bg: #243247;
+  --viz-frame-header-fg: #cfe0ff;
+  --viz-frame-bg: #12161c;
+  --viz-object-bg: #3a3a2a;
+  --viz-object-label-bg: #4a4a33;
+  --viz-heap-bg: #0d1117;
+  --viz-legend-bg: #0d1117;
+  --viz-panel-border: #30363d;
+}
+
+/* "auto" resolves to dark when the OS requests it. */
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] {
+    --opt-bg: #0d1117;
+    --opt-bg-panel: #161b22;
+    --opt-bg-inset: #0d1117;
+    --opt-text: #e6edf3;
+    --opt-text-dim: #94a3b8;
+    --opt-border: #30363d;
+    --opt-border-soft: #21262d;
+    --opt-accent: #38bdf8;
+
+    --opt-navbar-bg: #161b22;
+    --opt-navbar-border: #30363d;
+    --opt-navbar-text: #e6edf3;
+    --opt-navbar-tab-active-bg: #21262d;
+    --opt-navbar-tab-active-border: #38bdf8;
+
+    --opt-btn-bg: #21262d;
+    --opt-btn-bg-hover: #30363d;
+    --opt-btn-border: #3a414b;
+    --opt-btn-text: #e6edf3;
+    --opt-btn-primary-bg: #2f81c7;
+    --opt-btn-primary-text: #ffffff;
+
+    --opt-editor-bg: #1e1e1e;
+    --opt-editor-text: #e6edf3;
+    --opt-editor-gutter-bg: #1e1e1e;
+    --opt-editor-gutter-fg: #6b7280;
+    --opt-editor-active-line: #262b33;
+    --opt-editor-cursor: #e6edf3;
+    --opt-editor-selection: #264f78;
+    --opt-editor-error-bg: rgba(248, 81, 73, 0.18);
+
+    --opt-ai-bg: #101720;
+    --opt-ai-border: #22405e;
+    --opt-ai-user: #173049;
+    --opt-ai-assistant: #161b22;
+
+    --viz-bg: #0d1117;
+    --viz-stdout-bg: #0d1117;
+    --viz-stdout-text: #e6edf3;
+    --viz-code-line-fg: #e6edf3;
+    --viz-frame-header-bg: #243247;
+    --viz-frame-header-fg: #cfe0ff;
+    --viz-frame-bg: #12161c;
+    --viz-object-bg: #3a3a2a;
+    --viz-object-label-bg: #4a4a33;
+    --viz-heap-bg: #0d1117;
+    --viz-legend-bg: #0d1117;
+    --viz-panel-border: #30363d;
+  }
+}

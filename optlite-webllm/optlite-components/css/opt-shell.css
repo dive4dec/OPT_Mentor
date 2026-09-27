@@ -1,0 +1,194 @@
+/* ============================================================================
+ * OPT Mentor — shell layout (nav bar + resizable bands)
+ * ----------------------------------------------------------------------------
+ * Full-height flex column:
+ *   ┌──────────────────────────────────────────────────────────┐
+ *   │ #opt-navbar (pinned)  brand | [Visualize][Live Edit] | 🔗 | 🌗 │
+ *   ├──────────────────────────────────────────────────────────┤
+ *   │ #opt-ai-band   (AI chat; height resizable via the seam)   │
+ *   ├──────────────────────────────────────────────────────────┤ .opt-resizer-h
+ *   │ #opt-main-band (flex:1) holds #pyInputPane (edit) or      │
+ *   │                 #pyOutputPane (display); the visible one  │
+ *   │                 fills the band. Resizing the AI seam      │
+ *   │                 resizes this band (and the editor/viz)    │
+ *   │                 by complement.                            │
+ *   └──────────────────────────────────────────────────────────┘
+ *
+ * The bands REUSE the app's existing panes (#pyInputPane / #pyOutputPane /
+ * #visualize-ai-panel / #aichatbox); legacy jQuery/D3/viz/CM6 target them by
+ * ID and is untouched — we only relocate the nodes. style-loader injects this
+ * AFTER opt-frontend.css at runtime, so equal-specificity rules win by source
+ * order; we still scope under #opt-shell for explicitness.
+ * ==========================================================================*/
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--opt-bg);
+  color: var(--opt-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+#opt-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--opt-bg);
+}
+
+/* ---- pinned nav bar ---------------------------------------------------- */
+#opt-navbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  flex: 0 0 auto;
+  background: var(--opt-navbar-bg);
+  border-bottom: 1px solid var(--opt-navbar-border);
+  color: var(--opt-navbar-text);
+  user-select: none;
+  z-index: 5;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+#opt-navbar .opt-brand { font-weight: 600; font-size: 14px; letter-spacing: .2px; }
+#opt-navbar .opt-tabs { display: flex; gap: 4px; }
+#opt-navbar .opt-tab {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--opt-navbar-text);
+  padding: 4px 10px; font-size: 13px; border-radius: 6px;
+  cursor: pointer; line-height: 1.3;
+}
+#opt-navbar .opt-tab:hover { background: var(--opt-btn-bg-hover); }
+#opt-navbar .opt-tab.active {
+  background: var(--opt-navbar-tab-active-bg);
+  border-color: var(--opt-navbar-tab-active-border);
+  font-weight: 600;
+}
+#opt-navbar .opt-spacer { flex: 1 1 auto; }
+#opt-navbar .opt-navbtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--opt-btn-border);
+  background: var(--opt-btn-bg); color: var(--opt-btn-text);
+  padding: 4px 10px; font-size: 13px; border-radius: 6px;
+  cursor: pointer; line-height: 1.3; white-space: nowrap;
+}
+#opt-navbar .opt-navbtn:hover { background: var(--opt-btn-bg-hover); }
+#opt-navbar .opt-navbtn .opt-ico { font-size: 15px; line-height: 1; }
+
+/* ---- content area (flex column) --------------------------------------- */
+#opt-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.opt-band { position: relative; min-height: 0; }
+#opt-ai-band  { flex: 0 0 auto; height: 220px; overflow: hidden; }
+#opt-main-band{ flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+
+/* Re-hosted panes fill their band (they sit inside .opt-band-inner). Drop the
+   legacy centering / max-width so the code editor and the visualizer use the
+   full width of the band. */
+#opt-main-band .opt-band-inner #pyInputPane,
+#opt-main-band .opt-band-inner #pyOutputPane {
+  width: 100% !important;    /* beat any inline width (live sets 550px) */
+  max-width: 100% !important;
+  margin: 0;
+  box-sizing: border-box;
+  height: 100%;
+}
+/* Edit mode: the CM6 editor grows to fill the band (override the inline fixed
+   height set in initAceEditor; CM6 auto-resizes via its ResizeObserver). */
+#opt-main-band .opt-band-inner { display: flex; flex-direction: column; min-height: 0; }
+#opt-main-band .opt-band-inner #pyInputPane { display: flex; flex-direction: column; overflow: auto; }
+#opt-main-band .opt-band-inner #pyInputPane > #codeInputPane {
+  flex: 1 1 auto;
+  min-height: 120px;
+  height: auto !important;   /* beat the inline px height */
+  width: 100% !important;    /* beat the inline 700px width */
+  max-width: 100% !important;
+}
+/* Display mode: the visualizer fills the band and scrolls if it overflows. */
+#opt-main-band .opt-band-inner #pyOutputPane { display: block; overflow: auto; padding: 8px; }
+
+/* AI band host */
+.opt-band > .opt-band-inner { width: 100%; height: 100%; }
+#opt-ai-band > .opt-band-inner { width: 100%; height: 100%; }
+#opt-main-band > .opt-band-inner { flex: 1 1 auto; min-height: 0; }
+#opt-ai-band #visualize-ai-panel,
+#opt-ai-band #aichatbox {
+  width: 100%; height: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  overflow: auto;
+}
+
+/* Hide a whole band when it has no visible content yet (AI not enabled). */
+.opt-band.opt-hidden { flex: 0 0 0 !important; height: 0 !important; }
+.opt-band.opt-hidden + .opt-resizer-h { display: none; }
+
+/* ---- horizontal drag seam (AI | main boundary) ------------------------- */
+.opt-resizer-h {
+  flex: 0 0 auto;
+  height: 6px;
+  margin: -3px 0;
+  background: var(--opt-border-soft);
+  border-top: 1px solid var(--opt-border);
+  border-bottom: 1px solid var(--opt-border);
+  cursor: row-resize;
+  z-index: 6;
+  transition: background .12s;
+  position: relative;
+}
+.opt-resizer-h::after {
+  content: "";
+  position: absolute; left: 50%; top: 50%;
+  width: 42px; height: 3px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: var(--opt-border);
+  opacity: .8;
+}
+.opt-resizer-h:hover,
+.opt-resizer-h.opt-dragging { background: var(--opt-accent); }
+.opt-resizer-h:hover::after,
+.opt-resizer-h.opt-dragging::after { background: #fff; }
+
+/* ---- permalink toast --------------------------------------------------- */
+#opt-toast {
+  position: fixed; left: 50%; bottom: 24px;
+  transform: translateX(-50%) translateY(8px);
+  background: #1f2937; color: #fff;
+  padding: 8px 16px; border-radius: 8px; font-size: 13px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  opacity: 0; pointer-events: none;
+  transition: opacity .18s, transform .18s;
+  z-index: 1000;
+}
+#opt-toast.opt-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+html[data-theme="dark"] #opt-toast { background: #e6edf3; color: #0d1117; }
+
+/* ---- redundant in-page controls (now in the nav bar) ----------------- */
+/* The nav bar now provides: the mode tabs (Visualize / Live Edit), the
+   Permalink (copy-to-clipboard, no input box), and the theme switch. Hide the
+   old in-page copies. They stay in the DOM so legacy jQuery calls
+   ($('#urlOutput').val(''), $('#genUrlBtn').bind('click', ...)) keep working
+   as harmless no-ops. #executeBtn stays — it's the natural "run this code"
+   action under the editor in edit mode. */
+#liveModeBtn, #genUrlBtn, #urlOutput { display: none !important; }
+
+/* ---- small screens: compact nav, taller default AI band --------------- */
+@media (max-width: 640px) {
+  #opt-navbar { gap: 6px; padding: 5px 8px; }
+  #opt-navbar .opt-brand { display: none; }
+  #opt-navbar .opt-tab,
+  #opt-navbar .opt-navbtn { padding: 4px 8px; font-size: 12px; }
+  #opt-navbar .opt-navbtn span:not(.opt-ico) { display: none; } /* icon-only */
+  #opt-ai-band { height: 160px; }
+}
