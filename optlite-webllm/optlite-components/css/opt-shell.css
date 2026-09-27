@@ -186,6 +186,28 @@ html[data-theme="dark"] #visualize-ai-panel #viz-message-out { color: #ffffff; }
 @media (prefers-color-scheme: dark) {
   html[data-theme="auto"] #visualize-ai-panel #viz-message-out { color: #ffffff; }
 }
+/* AI panel input fields (chat/API text + password inputs, model select) default
+   to browser-white in BOTH themes. In light mode that already matches the white
+   editor, but in dark mode they show as jarring white boxes on the dark editor
+   (#1e1e1e). Give them the editor's surface in each dark case so the input box
+   matches the editor in both modes. Covers explicit "dark" AND "auto"+OS-dark
+   (data-theme stays "auto" in auto mode, resolved via @media(prefers-...dark)). */
+html[data-theme="dark"] #aichatbox input[type="text"],
+html[data-theme="dark"] #aichatbox input[type="password"],
+html[data-theme="dark"] #aichatbox input:not([type]),
+html[data-theme="dark"] #aichatbox textarea,
+html[data-theme="dark"] #aichatbox select {
+  background-color: #1e1e1e; color: #e6edf3; border-color: #3a3a3a;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] #aichatbox input[type="text"],
+  html[data-theme="auto"] #aichatbox input[type="password"],
+  html[data-theme="auto"] #aichatbox input:not([type]),
+  html[data-theme="auto"] #aichatbox textarea,
+  html[data-theme="auto"] #aichatbox select {
+    background-color: #1e1e1e; color: #e6edf3; border-color: #3a3a3a;
+  }
+}
 
 /* Hide a whole band when it has no visible content yet (AI not enabled). */
 .opt-band.opt-hidden { flex: 0 0 0 !important; height: 0 !important; }
