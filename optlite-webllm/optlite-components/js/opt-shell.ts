@@ -75,10 +75,17 @@ function showToast(msg: string) {
 }
 
 // Keep a band's visibility in sync with its (single) pane child, which the
-// legacy app shows/hides by display. Called on every relevant change.
+// legacy app shows/hides by display. Called on every relevant change. Also hides
+// the seam (a direct previous sibling of the band) when the band is hidden —
+// the AI band sits at the BOTTOM with the resizer above it, so the seam is the
+// resizer's relationship to the band below it.
 function syncBand(band: HTMLElement, pane: HTMLElement) {
   const hidden = getComputedStyle(pane).display === "none" || pane.style.display === "none";
   band.classList.toggle("opt-hidden", hidden);
+  const res = band.previousElementSibling as HTMLElement | null;
+  if (res && res.classList.contains("opt-resizer-h")) {
+    res.style.display = hidden ? "none" : "";
+  }
 }
 
 function startResizer(resizer: HTMLElement, band: HTMLElement) {
@@ -218,9 +225,11 @@ export function initOptShell(cfg: OptShellConfig) {
   mainInner.className = "opt-band-inner";
   mainBand.appendChild(mainInner);
 
-  content.appendChild(aiBand);
-  content.appendChild(resizer);
   content.appendChild(mainBand);
+  content.appendChild(resizer);
+  // AI band is at the BOTTOM (below the code/visualizer). The seam above it
+  // resizes its height (same drag logic — it's position-agnostic).
+  content.appendChild(aiBand);
 
   // Host <body>'s original children: move them under #opt-shell. We keep a
   // #opt-shell wrapper so the flex column fills the viewport.
@@ -249,6 +258,22 @@ export function initOptShell(cfg: OptShellConfig) {
     if (node.tagName === "SCRIPT" || node.tagName === "LINK" || node.tagName === "STYLE") return;
     mainInner.appendChild(node);
   });
+
+  // --- code (left) + visualizer (right) side by side, both pages ------------
+  // The visualization should sit to the RIGHT of the code window (in the
+  // current layout it's on the left). #pyInputPane (code) and #pyOutputPane
+  // (visualizer) sit in mainInner interleaved with (hidden) stray nodes (the
+  // legacy <table>, optionsPane). Wrap JUST those two in a dedicated row so
+  // they lay out side-by-side — code left, visualizer right — without the
+  // strays breaking the flex. The row is a horizontal flex in CSS. Applied to
+  // both pages (they share this shell structure and the viz is width-adaptive).
+  if (pyInput && pyOutput) {
+    const row = document.createElement("div");
+    row.className = "opt-workspace-row";
+    mainInner.insertBefore(row, mainInner.firstChild);
+    row.appendChild(pyInput);   // -> left
+    row.appendChild(pyOutput);  // -> right
+  }
 
   // --- keep AI band visibility in sync with its pane (MutationObserver) -----
   if (aiPane) {

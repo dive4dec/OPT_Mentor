@@ -117,18 +117,52 @@ body {
 /* Display mode: the visualizer fills the band and scrolls if it overflows. */
 #opt-main-band .opt-band-inner #pyOutputPane { display: block; overflow: auto; padding: 8px; }
 
-/* Live Edit: keep the CODE window narrower than the full band (the user found a
-   full-width editor unfocused). Cap it at the legacy 700px and center it; the
-   visualizer (#pyOutputPane) below it stays full-width. Scoped to the live page
-   only via #opt-shell[data-page="live"] (set in opt-shell.ts) so the Default
-   Mode page is unaffected. All three are !important so they beat the shared
-   width:100%/max-width:100% !important rules above and the inline width set in
-   opt-live.ts (550px); higher specificity than those base rules wins. On small
-   screens the band is already < 700px so the editor simply fills it. */
-#opt-shell[data-page="live"] #opt-main-band .opt-band-inner #pyInputPane {
-  width: 100% !important;
+/* ---- code (left) + visualizer (right) side by side, both pages -----------
+   The visualization sits to the RIGHT of the code window (it was on the left).
+   opt-shell.ts wraps #pyInputPane + #pyOutputPane in .opt-workspace-row on both
+   pages. The row is a horizontal flex: the code column keeps a fixed width, the
+   visualizer fills the rest on the right. Scoped under #opt-main-band (present
+   on both pages) so it applies to Default Mode and Live Edit alike.
+   !important beats the shared width:100%/height:100% base rules above and the
+   inline width set in opt-live.ts (550px). */
+#opt-main-band .opt-band-inner .opt-workspace-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12px;
+  min-height: 0;
+  height: 100%;
+}
+/* Code column: fixed width, scrolls internally. */
+#opt-main-band .opt-band-inner .opt-workspace-row #pyInputPane {
+  flex: 0 0 auto;
+  width: 380px !important;
+  min-width: 280px;
+  max-width: 560px !important;
+  height: auto !important;
+  margin: 0 !important;
+  overflow: auto;
+}
+#opt-main-band .opt-band-inner .opt-workspace-row #pyInputPane > #codeInputPane {
+  height: auto !important;
+  min-height: 200px;
+}
+/* Visualizer column: fills the remaining width on the right. */
+#opt-main-band .opt-band-inner .opt-workspace-row #pyOutputPane {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: auto !important;
+  max-width: 100% !important;
+}
+/* Live Edit: a slightly wider code window (it's the primary editing surface)
+   and a comfortable default editor height. */
+#opt-shell[data-page="live"] .opt-workspace-row #pyInputPane {
+  width: 550px !important;
   max-width: 700px !important;
-  margin: 0 auto !important;
+}
+#opt-shell[data-page="live"] .opt-workspace-row #pyInputPane > #codeInputPane {
+  height: 44vh !important;
+  min-height: 260px;
 }
 
 /* AI band host */
