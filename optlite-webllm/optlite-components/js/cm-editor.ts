@@ -293,6 +293,41 @@ function makeJediPythonSource(completer: PyCompleter) {
   };
 }
 
+// --- Contextual-help keybinding (Shift+Tab) ----------------------------
+// Shift+Tab shows the docstring of the symbol under the cursor (Jedi, local).
+// It FALLS THROUGH to the normal outdent (indentLess) when either:
+//   * no inferrer is wired / mode isn't python,
+//   * the cursor is at the start of the line (in / just after the leading
+//     whitespace) — i.e. where Shift+Tab has always meant "outdent",
+//   * the cursor isn't sitting on a word,
+//   * an autocomplete popup is open (let it keep cycling candidates).
+// So we never steal the outdent shortcut — only when the cursor is on a symbol
+// in the code. The returned keymap is placed FIRST so it is matched before
+// indentWithTab's own Shift+Tab -> outdent binding; returning false hands off.
+function makeHelpKeymap(
+  inferrer: PyInferrer | undefined,
+  isPython: boolean,
+  showHelpAtCursor: () => boolean,
+): { key: string; run: (v: EditorView) => boolean }[] {
+  if (!inferrer || !isPython) return [];
+  return [{
+    key: "Shift-Tab",
+    run: (view) => {
+      const st = view.state;
+      const head = st.selection.main.head;
+      const line = st.doc.lineAt(head);
+      const before = st.doc.sliceString(line.from, head); // text on line, before cursor
+      // Start-of-line guard: cursor in the leading whitespace, or within a few
+      // chars of it (e.g. just landed at `  |`) = keep the outdent behavior.
+      if (/^[ \t]*$/.test(before) || before.length <= 4) return false;
+      const word = st.wordAt(head);
+      if (!word || word.from === word.to) return false;
+      if (view.contentDOM.querySelector(".cm-tooltip.cm-tooltip-autocomplete")) return false;
+      return showHelpAtCursor();
+    },
+  }];
+}
+
 export interface OptCmEditorOptions {
   container: HTMLElement;
   value: string;
@@ -307,10 +342,11 @@ export interface OptCmEditorOptions {
   // bare-word completion keeps the exact static behavior. Omit for the
   // test-case editor / c_cpp to keep the default static completion.
   pythonCompleter?: PyCompleter;
-  // When set (and mode is python), HOVERING the mouse over a symbol in the
-  // editor shows that symbol's docstring in a small tooltip (resolved via this
-  // async inferrer — Jedi in the pyodide worker). Omit for the test-case editor
-  // / c_cpp to disable hover-help.
+  // When set (and mode is python), pressing Shift+Tab with the cursor on a
+  // symbol shows that symbol's docstring in a small tooltip (resolved via this
+  // async inferrer — Jedi in the pyodide worker). Shift+Tab still outdents when
+  // the cursor is at the start of the line (see makeHelpKeymap). Omit for the
+  // test-case editor / c_cpp to disable the shortcut.
   pythonInferrer?: PyInferrer;
   onChange?: (text: string) => void;
 }
@@ -319,13 +355,11 @@ export class OptCmEditor {
   private view: EditorView;
   private modeCompartment = new Compartment();
   private highlightCompartment = new Compartment();
-  // --- Contextual-help hover state ------------------------------------
+  // --- Contextual-help (Shift+Tab) state ------------------------------
   private helpInferId = 0;            // monotonically-increasing request id (supersede stale results)
   private helpBox: HTMLElement | null = null;
-  private helpHoverTimer: number | null = null;   // delay before showing on hover
-  private helpHoverWord: { from: number; to: number } | null = null;  // word the mouse is on
-  private onHelpHover: ((e: MouseEvent) => void) | null = null;
-  private onHelpHoverLeave: (() => void) | null = null;
+  private onHelpEsc: ((e: KeyboardEvent) => void) | null = null;
+  private onHelpClick: ((e: MouseEvent) => void) | null = null;
   private opts: OptCmEditorOptions;
 
   constructor(opts: OptCmEditorOptions) {
@@ -399,7 +433,15 @@ export class OptCmEditor {
         drawSelection(),
         dropCursor(),
         history(),
-        keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
+        // Contextual help: Shift+Tab on a symbol shows its docstring. Placed
+        // before indentWithTab so it wins for symbols; it returns false at the
+        // line start so outdent (indentWithTab's Shift+Tab) still works. No-op
+        // (empty keymap) when no inferrer is wired or the mode isn't python.
+        keymap.of([...makeHelpKeymap(
+          opts.pythonInferrer,
+          (opts.mode || "python") === "python",
+          () => this.showHelpAtCursor(),
+        ), ...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
         // Jedi-backed attribute completion for the Python editor. When a
         // pythonCompleter is injected and the mode is python, we replace the
         // default source with one that serves real attribute lists
@@ -425,15 +467,20 @@ export class OptCmEditor {
 
     this.view = new EditorView({ parent: opts.container, state: startState });
 
-    // Hover-help: show the symbol under the mouse after a short delay. Listeners
-    // are plain DOM handlers on the CM6 content DOM (NOT CM6 domEventHandlers —
-    // those race CM6's MouseSelection and are banned for that reason). Bound to
-    // contentDOM so gutter/hover outside the text still behaves sensibly.
+    // Dismiss the contextual-help tooltip on Escape or a click elsewhere.
+    // Plain document-level listeners (NOT CM6 domEventHandlers — see memory:
+    // those race CM6's MouseSelection and are banned for this reason).
     if (opts.pythonInferrer) {
-      this.onHelpHover = (e: MouseEvent) => this.onHelpMouseMove(e);
-      this.onHelpHoverLeave = () => this.cancelHelpHover();
-      this.view.contentDOM.addEventListener("mousemove", this.onHelpHover);
-      this.view.dom.addEventListener("mouseleave", this.onHelpHoverLeave);
+      this.onHelpEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape") this.dismissHelp();
+      };
+      this.onHelpClick = (e: MouseEvent) => {
+        // Dismiss when clicking outside the tip; clicking the tip itself keeps it
+        // (so a student can scroll a long docstring, e.g. math.isclose).
+        if (this.helpBox && !this.helpBox.contains(e.target as Node)) this.dismissHelp();
+      };
+      document.addEventListener("keydown", this.onHelpEsc);
+      document.addEventListener("mousedown", this.onHelpClick);
     }
   }
 
@@ -515,65 +562,40 @@ export class OptCmEditor {
   }
 
   destroy() {
-    this.cancelHelpHover();
     this.dismissHelp();
-    if (this.onHelpHover) this.view.contentDOM.removeEventListener("mousemove", this.onHelpHover);
-    if (this.onHelpHoverLeave) this.view.dom.removeEventListener("mouseleave", this.onHelpHoverLeave);
-    this.onHelpHover = null;
-    this.onHelpHoverLeave = null;
+    if (this.onHelpEsc) document.removeEventListener("keydown", this.onHelpEsc);
+    if (this.onHelpClick) document.removeEventListener("mousedown", this.onHelpClick);
+    this.onHelpEsc = null;
+    this.onHelpClick = null;
     this.view.destroy();
   }
 
-  // --- Contextual help: hover a symbol to see its docstring ------------
-  // Fully local — resolves the word under the mouse via the injected inferrer
-  // (Jedi in the pyodide worker). No AI, no network. Debounced ~350ms so a
-  // casual swipe across the code doesn't fire a request on every character.
-
-  // Mouse moved over the editor text: figure out which word the cursor is on,
-  // then (re)schedule a show for it once the mouse rests.
-  private onHelpMouseMove(e: MouseEvent): void {
-    if ((this.opts.mode || "python") !== "python") return;
-    const view = this.view;
-    const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
-    if (pos == null) { this.cancelHelpHover(); return; }
-    const word = view.state.wordAt(pos);
-    if (!word || word.from === word.to) { this.cancelHelpHover(); return; }
-    // If the mouse is still on the same word we already have (or are about to
-    // show), don't re-trigger — avoids flicker and duplicate requests.
-    if (this.helpHoverWord && this.helpHoverWord.from === word.from && this.helpHoverWord.to === word.to) return;
-    this.helpHoverWord = word;
-    // Reset the debounce: show only if the mouse keeps resting on this word.
-    if (this.helpHoverTimer != null) window.clearTimeout(this.helpHoverTimer);
-    this.helpHoverTimer = window.setTimeout(() => {
-      this.helpHoverTimer = null;
-      this.showHelpForWord(word);
-    }, 350);
-  }
-
-  private cancelHelpHover(): void {
-    if (this.helpHoverTimer != null) { window.clearTimeout(this.helpHoverTimer); this.helpHoverTimer = null; }
-    this.helpHoverWord = null;
-    this.dismissHelp();
-  }
-
-  // Resolve + render help for a specific word (called from the hover debounce).
-  private showHelpForWord(word: { from: number; to: number }): void {
+  // --- Contextual help: Shift+Tab shows the symbol under the cursor ----
+  // Called by the Shift+Tab keybinding when the cursor is on a symbol (the
+  // line-start / outdent guard lives in makeHelpKeymap). Fully local — resolves
+  // the word via the injected inferrer (Jedi in the pyodide worker). No AI, no
+  // network.
+  private showHelpAtCursor(): boolean {
     const inferrer = this.opts.pythonInferrer;
-    if (!inferrer) return;
+    if (!inferrer || (this.opts.mode || "python") !== "python") return false;
     const view = this.view;
-    const head = word.from;
+    const head = view.state.selection.main.head;
+    const word = view.state.wordAt(head);
+    if (!word || word.from === word.to) return false;
     const line = view.state.doc.lineAt(head);
     const lineNo = line.number;          // 1-based
     const column = head - line.from;     // 0-based
     const reqId = ++this.helpInferId;
     const coords = view.coordsAtPos(word.from);
-    if (!coords) return;
+    if (!coords) return false;
     inferrer(view.state.doc.toString(), lineNo, column).then((info) => {
-      // Drop the result if the mouse moved to a newer word (or left) since.
+      // Drop the result if a newer help request or dismiss superseded it.
       if (reqId !== this.helpInferId) return;
-      if (!this.helpHoverWord || this.helpHoverWord.from !== word.from || this.helpHoverWord.to !== word.to) return;
       this.showHelpBox(view, info, word, coords);
     });
+    // We handled the key even though the result is async (we're going to show
+    // or not show shortly); suppress CM6's default (outdent).
+    return true;
   }
 
   private showHelpBox(

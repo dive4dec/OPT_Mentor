@@ -187,10 +187,10 @@ html[data-theme="dark"] {
 .opt-help-tip {
   position: absolute;
   z-index: 40;
-  pointer-events: none;   /* never block the mouse, so hover can move into/out of the tip */
   width: 360px;
   max-height: 260px;
-  overflow: auto;
+  overflow: auto;                    /* long docstrings (e.g. math.isclose) scroll, never clipped */
+  -webkit-overflow-scrolling: touch; /* momentum scrolling on iOS student phones */
   box-sizing: border-box;
   padding: 8px 10px;
   border-radius: 6px;
