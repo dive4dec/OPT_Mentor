@@ -254,6 +254,24 @@ html[data-theme="dark"] #visualize-ai-panel #viz-message-out { color: #7ec8ff; }
 @media (prefers-color-scheme: dark) {
   html[data-theme="auto"] #visualize-ai-panel #viz-message-out { color: #7ec8ff; }
 }
+/* AI token-usage stats line (#chat-stats / #viz-chat-stats). The base rule
+   (opt-live.css / opt-frontend.css) hardcodes a LIGHT background #d3eceb with no
+   text color, so in dark mode the light body text sits on a light box and is
+   unreadable. Give it a dark inset surface + dim light text in both dark cases
+   (explicit "dark" AND "auto"+OS-dark), mirroring the rules above. 2-ID base +
+   html[...] scope = specificity that wins. Light mode is untouched. */
+html[data-theme="dark"] #aichatbox #chat-stats,
+html[data-theme="dark"] #visualize-ai-panel #viz-chat-stats {
+  background-color: #161b22;
+  color: #9aa5b1;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] #aichatbox #chat-stats,
+  html[data-theme="auto"] #visualize-ai-panel #viz-chat-stats {
+    background-color: #161b22;
+    color: #9aa5b1;
+  }
+}
 /* AI panel input fields (chat/API text + password inputs, model select) default
    to browser-white in BOTH themes. In light mode that already matches the white
    editor, but in dark mode they show as jarring white boxes on the dark editor
