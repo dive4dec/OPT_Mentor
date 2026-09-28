@@ -58,7 +58,11 @@
   background: var(--opt-editor-active-line);
 }
 .cm-editor .cm-activeLineGutter {
-  background: var(--opt-editor-active-line);
+  /* background-COLOR, not the `background` shorthand: the shorthand resets
+     background-image to none, which wiped the step-arrow PNG/SVG (that also
+     lives on this cell via .cm-stepGutter .curLineStepGutter) whenever the
+     cursor sat on an arrow line. */
+  background-color: var(--opt-editor-active-line);
 }
 .cm-editor .cm-cursor { border-left-color: var(--opt-editor-cursor); }
 .cm-editor .cm-selectionBackground,
