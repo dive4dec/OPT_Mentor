@@ -293,33 +293,6 @@ function makeJediPythonSource(completer: PyCompleter) {
   };
 }
 
-// Contextual-help keybinding. Alt-/ (Option-/ on Mac) resolves the identifier
-// under the cursor via the inferrer and shows its docstring in a tooltip. We
-// deliberately do NOT use Mod-/ (Ctrl-/): @codemirror/commands' defaultKeymap
-// already binds Mod-/ to toggle-comment (and lang-python relies on it), so
-// Ctrl-/ would comment the line instead of showing help. Alt-/ is free and
-// mnemonic ("Alt" = the secondary/inspector modifier).
-// runHelp is async (waits on the worker) but fires-and-forgets here: returning
-// true from a keymap handler is fine while an async promise is pending. Returns
-// false (let CM6 keep handling the key) when no inferrer is wired or the cursor
-// isn't on a word.
-function makeHelpKeymap(inferrer: PyInferrer | undefined, runHelp: (view: EditorView) => void) {
-  if (!inferrer) return [];
-  return [
-    {
-      key: "Alt-/",
-      preventDefault: true,
-      run: (view: EditorView): boolean => {
-        const head = view.state.selection.main.head;
-        const word = view.state.wordAt(head);
-        if (!word || word.from === word.to) return false;
-        runHelp(view);
-        return true; // consumed — don't let it fall through to anything else
-      },
-    },
-  ];
-}
-
 export interface OptCmEditorOptions {
   container: HTMLElement;
   value: string;
@@ -334,10 +307,10 @@ export interface OptCmEditorOptions {
   // bare-word completion keeps the exact static behavior. Omit for the
   // test-case editor / c_cpp to keep the default static completion.
   pythonCompleter?: PyCompleter;
-  // When set (and mode is python), the Alt-/ shortcut ("contextual help")
-  // resolves the symbol under the cursor via this async inferrer (backed by the
-  // pyodide/Jedi worker) and shows its docstring in a positioned tooltip. Omit
-  // for the test-case editor / c_cpp to disable the shortcut.
+  // When set (and mode is python), HOVERING the mouse over a symbol in the
+  // editor shows that symbol's docstring in a small tooltip (resolved via this
+  // async inferrer — Jedi in the pyodide worker). Omit for the test-case editor
+  // / c_cpp to disable hover-help.
   pythonInferrer?: PyInferrer;
   onChange?: (text: string) => void;
 }
@@ -346,11 +319,13 @@ export class OptCmEditor {
   private view: EditorView;
   private modeCompartment = new Compartment();
   private highlightCompartment = new Compartment();
-  private helpKeymapCompartment = new Compartment();
-  private helpInferId = 0;
+  // --- Contextual-help hover state ------------------------------------
+  private helpInferId = 0;            // monotonically-increasing request id (supersede stale results)
   private helpBox: HTMLElement | null = null;
-  private onHelpEsc: ((e: KeyboardEvent) => void) | null = null;
-  private onHelpClick: ((e: MouseEvent) => void) | null = null;
+  private helpHoverTimer: number | null = null;   // delay before showing on hover
+  private helpHoverWord: { from: number; to: number } | null = null;  // word the mouse is on
+  private onHelpHover: ((e: MouseEvent) => void) | null = null;
+  private onHelpHoverLeave: (() => void) | null = null;
   private opts: OptCmEditorOptions;
 
   constructor(opts: OptCmEditorOptions) {
@@ -425,12 +400,6 @@ export class OptCmEditor {
         dropCursor(),
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
-        // Contextual help (Alt-/): resolve the symbol under the cursor and show
-        // its docstring. Compartmented so it reconfigures cleanly; no-op (empty
-        // keymap) when no inferrer is wired or the mode isn't python.
-        this.helpKeymapCompartment.of(
-          keymap.of(makeHelpKeymap(opts.pythonInferrer, () => this.runHelpAtCursor()))
-        ),
         // Jedi-backed attribute completion for the Python editor. When a
         // pythonCompleter is injected and the mode is python, we replace the
         // default source with one that serves real attribute lists
@@ -456,19 +425,15 @@ export class OptCmEditor {
 
     this.view = new EditorView({ parent: opts.container, state: startState });
 
-    // Dismiss the contextual-help tooltip on Escape or a click elsewhere.
-    // Plain document-level listeners (NOT CM6 domEventHandlers — see memory:
-    // those race CM6's MouseSelection and were banned for this reason).
+    // Hover-help: show the symbol under the mouse after a short delay. Listeners
+    // are plain DOM handlers on the CM6 content DOM (NOT CM6 domEventHandlers —
+    // those race CM6's MouseSelection and are banned for that reason). Bound to
+    // contentDOM so gutter/hover outside the text still behaves sensibly.
     if (opts.pythonInferrer) {
-      this.onHelpEsc = (e: KeyboardEvent) => {
-        if (e.key === "Escape") this.dismissHelp();
-      };
-      this.onHelpClick = (e: MouseEvent) => {
-        // Dismiss when clicking outside the tip; clicking the tip itself keeps it.
-        if (this.helpBox && !this.helpBox.contains(e.target as Node)) this.dismissHelp();
-      };
-      document.addEventListener("keydown", this.onHelpEsc);
-      document.addEventListener("mousedown", this.onHelpClick);
+      this.onHelpHover = (e: MouseEvent) => this.onHelpMouseMove(e);
+      this.onHelpHoverLeave = () => this.cancelHelpHover();
+      this.view.contentDOM.addEventListener("mousemove", this.onHelpHover);
+      this.view.dom.addEventListener("mouseleave", this.onHelpHoverLeave);
     }
   }
 
@@ -550,26 +515,53 @@ export class OptCmEditor {
   }
 
   destroy() {
+    this.cancelHelpHover();
     this.dismissHelp();
-    if (this.onHelpEsc) document.removeEventListener("keydown", this.onHelpEsc);
-    if (this.onHelpClick) document.removeEventListener("mousedown", this.onHelpClick);
-    this.onHelpEsc = null;
-    this.onHelpClick = null;
+    if (this.onHelpHover) this.view.contentDOM.removeEventListener("mousemove", this.onHelpHover);
+    if (this.onHelpHoverLeave) this.view.dom.removeEventListener("mouseleave", this.onHelpHoverLeave);
+    this.onHelpHover = null;
+    this.onHelpHoverLeave = null;
     this.view.destroy();
   }
 
-  // --- Contextual help: explain the symbol under the cursor (Mod-/) --------
-  // Resolves the word at the cursor via the injected inferrer (Jedi in the
-  // pyodide worker) and shows its docstring in a small tooltip anchored to the
-  // word. Fully local — no AI, no network. No-op when no inferrer is wired or
-  // the cursor isn't on a resolvable name.
-  private runHelpAtCursor(): void {
-    const inferrer = this.opts.pythonInferrer;
-    if (!inferrer || (this.opts.mode || "python") !== "python") return;
+  // --- Contextual help: hover a symbol to see its docstring ------------
+  // Fully local — resolves the word under the mouse via the injected inferrer
+  // (Jedi in the pyodide worker). No AI, no network. Debounced ~350ms so a
+  // casual swipe across the code doesn't fire a request on every character.
+
+  // Mouse moved over the editor text: figure out which word the cursor is on,
+  // then (re)schedule a show for it once the mouse rests.
+  private onHelpMouseMove(e: MouseEvent): void {
+    if ((this.opts.mode || "python") !== "python") return;
     const view = this.view;
-    const head = view.state.selection.main.head;
-    const word = view.state.wordAt(head);
-    if (!word || word.from === word.to) return;
+    const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
+    if (pos == null) { this.cancelHelpHover(); return; }
+    const word = view.state.wordAt(pos);
+    if (!word || word.from === word.to) { this.cancelHelpHover(); return; }
+    // If the mouse is still on the same word we already have (or are about to
+    // show), don't re-trigger — avoids flicker and duplicate requests.
+    if (this.helpHoverWord && this.helpHoverWord.from === word.from && this.helpHoverWord.to === word.to) return;
+    this.helpHoverWord = word;
+    // Reset the debounce: show only if the mouse keeps resting on this word.
+    if (this.helpHoverTimer != null) window.clearTimeout(this.helpHoverTimer);
+    this.helpHoverTimer = window.setTimeout(() => {
+      this.helpHoverTimer = null;
+      this.showHelpForWord(word);
+    }, 350);
+  }
+
+  private cancelHelpHover(): void {
+    if (this.helpHoverTimer != null) { window.clearTimeout(this.helpHoverTimer); this.helpHoverTimer = null; }
+    this.helpHoverWord = null;
+    this.dismissHelp();
+  }
+
+  // Resolve + render help for a specific word (called from the hover debounce).
+  private showHelpForWord(word: { from: number; to: number }): void {
+    const inferrer = this.opts.pythonInferrer;
+    if (!inferrer) return;
+    const view = this.view;
+    const head = word.from;
     const line = view.state.doc.lineAt(head);
     const lineNo = line.number;          // 1-based
     const column = head - line.from;     // 0-based
@@ -577,8 +569,9 @@ export class OptCmEditor {
     const coords = view.coordsAtPos(word.from);
     if (!coords) return;
     inferrer(view.state.doc.toString(), lineNo, column).then((info) => {
-      // Drop the result if a newer help request / dismiss superseded it.
+      // Drop the result if the mouse moved to a newer word (or left) since.
       if (reqId !== this.helpInferId) return;
+      if (!this.helpHoverWord || this.helpHoverWord.from !== word.from || this.helpHoverWord.to !== word.to) return;
       this.showHelpBox(view, info, word, coords);
     });
   }

@@ -472,7 +472,7 @@ export class OptLiveFrontend extends OptFrontend {
       mode: 'python',
       tabSize: 4,
       pythonCompleter: pyComplete,   // Jedi-backed attribute completion (str. -> format/join)
-      pythonInferrer: pyInfer,       // Jedi-backed contextual help (Alt-/) for the symbol under the cursor
+      pythonInferrer: pyInfer,       // Jedi-backed contextual help — hover a symbol to see its docstring
       onChange: (text) => {
         // 2017-11-21: convert all pasted tabs to 4 spaces (soft tabs).
         if (text.indexOf('\t') >= 0) {

@@ -187,6 +187,7 @@ html[data-theme="dark"] {
 .opt-help-tip {
   position: absolute;
   z-index: 40;
+  pointer-events: none;   /* never block the mouse, so hover can move into/out of the tip */
   width: 360px;
   max-height: 260px;
   overflow: auto;
