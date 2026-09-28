@@ -404,7 +404,11 @@ export class OptCmEditor {
         backgroundColor: "#fdecec",
         boxShadow: "inset 3px 0 0 #e93f34",
       },
-      ".cm-activeLineGutter": { background: "transparent" },
+      // background-COLOR only (NOT the `background` shorthand): the shorthand
+      // compiles to `background-image: initial`, which wiped the step-arrow SVG
+      // on the cell whenever the cursor sat on an arrow line (the arrow lives on
+      // the same cell via `.cm-stepGutter .curLineStepGutter`).
+      ".cm-activeLineGutter": { backgroundColor: "transparent" },
       ".cm-placeholder": { color: "#999" },
     });
 
