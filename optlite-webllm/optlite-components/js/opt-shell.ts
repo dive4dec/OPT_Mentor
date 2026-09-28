@@ -293,25 +293,56 @@ function syncVizColumn(row: HTMLElement, viz: HTMLElement, seam: HTMLElement) {
   }
 }
 
-// The bottom AI band is anchored at 220px even when there's no conversation.
-// "No content" = the AI response (#message-out) is empty/hidden — i.e. the user
-// hasn't asked anything yet. When empty, collapse the band to ZERO height so the
-// code window fills the entire height (per the requirement), and hide its seam.
-// A conversation appearing, or the user clicking the "Ask AI" nav button
-// (userOpened), keeps it open.
+// The bottom AI / error band (the "seam" + its #aichatbox content).
+//
+// SINGLE SOURCE OF TRUTH for whether it should be open is the in-seam "Ask AI"
+// button (#askAI) itself: webllm.ts shows it (display:block) exactly when an
+// error is reported (or an answer is already on screen) and hides it
+// (display:none) otherwise. So the band simply follows that visibility:
+//   - #askAI visible   (error reported)   -> band expands
+//   - #askAI invisible (no error / answer) -> band collapses (code fills height)
+// We do NOT re-derive "is there an error?" here — we just read the button's
+// computed display, so the two can never disagree.
+//
+// The top-nav "Debug" button is a manual override (`userForce`): clicking it
+// toggles the band open or closed regardless of the current error state.
+//
+// A *new* error (#askAI transitioning invisible -> visible) always re-opens the
+// band and clears a manual "closed", so a fresh error is never silently hidden.
 function makeAiBandController(aiBand: HTMLElement, aiPane: HTMLElement, resizer: HTMLElement) {
-  let userOpened = false;
-  const sync = () => {
-    const msg = aiPane.querySelector("#message-out") as HTMLElement | null;
-    const hasConversation = !!(msg && !msg.classList.contains("hidden") && msg.textContent && msg.textContent.trim().length > 0);
-    const empty = !hasConversation && !userOpened;
-    aiBand.classList.toggle("opt-ai-empty", empty);
-    if (resizer) resizer.style.display = empty ? "none" : "";
+  const askAI = aiPane.querySelector("#askAI") as HTMLElement | null;
+  let userForce: "open" | "closed" | null = null;   // manual override via the Debug button
+  let lastAskVisible = false;
+  let lastExpanded = false;
+
+  const askVisible = () => !!(askAI && getComputedStyle(askAI).display !== "none");
+  const currentExpanded = () =>
+    userForce === "open" ? true : userForce === "closed" ? false : lastAskVisible;
+
+  const apply = (expanded: boolean) => {
+    aiBand.classList.toggle("opt-ai-empty", !expanded);
+    if (resizer) resizer.style.display = expanded ? "" : "none";
+    if (expanded && !lastExpanded) aiBand.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    lastExpanded = expanded;
   };
+
+  const sync = () => {
+    const vis = askVisible();
+    if (vis && !lastAskVisible) userForce = null;    // a new error appeared -> drop any manual close
+    lastAskVisible = vis;
+    apply(currentExpanded());
+  };
+
   const mo = new MutationObserver(sync);
   mo.observe(aiPane, { subtree: true, attributes: true, attributeFilter: ["style", "class"], childList: true });
   sync();
-  return { sync, open: () => { userOpened = true; sync(); } };
+  return {
+    sync,
+    toggle: () => {                                  // Debug button: flip the band
+      userForce = lastExpanded ? "closed" : "open";
+      sync();
+    },
+  };
 }
 
 export function initOptShell(cfg: OptShellConfig) {
@@ -380,21 +411,22 @@ export function initOptShell(cfg: OptShellConfig) {
   kbdBtn.title = "Keyboard shortcuts";
   kbdBtn.innerHTML = '<span class="opt-ico">⌨</span>';
 
-  // Live Edit only: "Ask AI" button. The AI band auto-collapses when there's no
-  // conversation (so the code fills the full height); this button is the
-  // top-nav affordance to bring the panel back (and keeps it open).
-  const askAIbtn = document.createElement("button");
-  askAIbtn.type = "button";
-  askAIbtn.className = "opt-navbtn";
-  askAIbtn.id = "opt-ask-ai";
-  askAIbtn.title = "Open the AI panel";
-  askAIbtn.innerHTML = '<span class="opt-ico">✳️</span><span>Ask AI</span>';
-  if (cfg.page !== "live") askAIbtn.style.display = "none";
+  // Live Edit only: "Debug" button — a manual toggle for the bottom AI / error
+  // band. The band normally follows the in-seam "Ask AI" button's visibility
+  // (open when an error is reported, closed otherwise); clicking Debug forces it
+  // open or closed on top of that. Tooltip explains the dual behaviour.
+  const debugBtn = document.createElement("button");
+  debugBtn.type = "button";
+  debugBtn.className = "opt-navbtn";
+  debugBtn.id = "opt-debug";
+  debugBtn.title = "Debug: show / hide the error panel";
+  debugBtn.innerHTML = '<span class="opt-ico">🐞</span><span>Debug</span>';
+  if (cfg.page !== "live") debugBtn.style.display = "none";
 
   navbar.appendChild(brand);
   navbar.appendChild(tabs);
   navbar.appendChild(spacer);
-  navbar.appendChild(askAIbtn);
+  navbar.appendChild(debugBtn);
   navbar.appendChild(permBtn);
   navbar.appendChild(themeBtn);
   navbar.appendChild(kbdBtn);
@@ -546,18 +578,12 @@ export function initOptShell(cfg: OptShellConfig) {
       syncViz();
       window.addEventListener("resize", syncViz);
     }
-    // AI conversation appears/disappears -> collapse/expand the bottom AI band
+    // The bottom AI / error band follows the in-seam "Ask AI" (#askAI) visibility
+    // (its own MutationObserver does that); the top-nav "Debug" button is a
+    // manual toggle that overrides the current error state.
     if (aiPane) {
       const aiCtl = makeAiBandController(aiBand, aiPane as HTMLElement, resizer);
-      askAIbtn.addEventListener("click", () => {
-        aiCtl.open();
-        const ask = document.getElementById("askAI") as HTMLElement | null;
-        ask && ask.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
-      // Also treat the legacy "Ask AI" button click inside the pane as a
-      // user-opened signal (band is open by then, but stay consistent).
-      const askLegacy = document.getElementById("askAI");
-      if (askLegacy) askLegacy.addEventListener("click", () => aiCtl.open());
+      debugBtn.addEventListener("click", () => aiCtl.toggle());
     }
   }
 
