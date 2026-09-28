@@ -28,7 +28,7 @@ require('./lib/jquery-3.0.0.min.js');
 
 // need to directly import the class for type checking to work
 import { AbstractBaseFrontend, generateUUID, supports_html5_storage } from './opt-frontend-common';
-import { pyComplete } from './pyodide/runner';
+import { pyComplete, pyInfer } from './pyodide/runner';
 import { ExecutionVisualizer, assert, htmlspecialchars } from './pytutor';
 import { OptCmEditor } from './cm-editor';
 
@@ -261,6 +261,7 @@ export class OptFrontend extends AbstractBaseFrontend {
       mode: 'python',
       tabSize: 4,
       pythonCompleter: pyComplete,   // Jedi-backed attribute completion (str. -> format/join)
+      pythonInferrer: pyInfer,       // Jedi-backed contextual help (Shift+Tab on a symbol -> docstring)
       onChange: (text) => {
         // 2017-11-21: convert any pasted tabs to 4 spaces instantly (soft tabs).
         if (text.indexOf('\t') >= 0) {
