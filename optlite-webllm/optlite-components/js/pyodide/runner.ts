@@ -144,7 +144,11 @@ export type PyInferResult = {
 };
 
 let inferId = 0;
-const INFER_TIMEOUT_MS = 6000;
+// Generous on purpose: this is a deliberate user action (not a completion that
+// must be fast), and on a cold first press the worker may still be loading the
+// jedi package (a fire-and-forget warmup during init). 15s bounds a genuinely
+// stuck worker without ever cutting off a legitimate (slow) infer.
+const INFER_TIMEOUT_MS = 15000;
 const inferTimeouts: Record<number, any> = {};
 
 const pyInfer = (() => {
@@ -166,8 +170,13 @@ const pyInfer = (() => {
       callbacks[id] = (data: any) => {
         finish(data && !data.error && data.tostr !== undefined ? (data as PyInferResult) : null);
       };
-      inferTimeouts[id] = setTimeout(() => finish(null), INFER_TIMEOUT_MS);
+      // Start the timeout only AFTER pyodide init resolves. If the timer started
+      // at request time, a cold CDN load of pyodide (10-30s) would blow the
+      // timeout before the worker can even receive the request — the shortcut
+      // would silently show "no help" on the user's first press. Post-init, the
+      // timeout genuinely measures "worker stuck running a long script".
       init.then(() => {
+        inferTimeouts[id] = setTimeout(() => finish(null), INFER_TIMEOUT_MS);
         pyodideWorker.postMessage({ type: 'infer', code, line, column, id });
       }).catch(() => finish(null));
     });

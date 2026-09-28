@@ -293,24 +293,28 @@ function makeJediPythonSource(completer: PyCompleter) {
   };
 }
 
-// Contextual-help keybinding. Mod-/ (Ctrl+/ on Win/Linux, Cmd+/ on Mac) resolves
-// the identifier under the cursor via the inferrer and shows its docstring in a
-// tooltip. runHelp is async (waits on the worker) but fires-and-forgets here:
-// returning true from a keymap handler is fine while an async promise is pending.
-// Returns false (let CM6 keep handling the key) when no inferrer is wired or the
-// cursor isn't on a word.
+// Contextual-help keybinding. Alt-/ (Option-/ on Mac) resolves the identifier
+// under the cursor via the inferrer and shows its docstring in a tooltip. We
+// deliberately do NOT use Mod-/ (Ctrl-/): @codemirror/commands' defaultKeymap
+// already binds Mod-/ to toggle-comment (and lang-python relies on it), so
+// Ctrl-/ would comment the line instead of showing help. Alt-/ is free and
+// mnemonic ("Alt" = the secondary/inspector modifier).
+// runHelp is async (waits on the worker) but fires-and-forgets here: returning
+// true from a keymap handler is fine while an async promise is pending. Returns
+// false (let CM6 keep handling the key) when no inferrer is wired or the cursor
+// isn't on a word.
 function makeHelpKeymap(inferrer: PyInferrer | undefined, runHelp: (view: EditorView) => void) {
   if (!inferrer) return [];
   return [
     {
-      key: "Mod-/",
+      key: "Alt-/",
       preventDefault: true,
       run: (view: EditorView): boolean => {
         const head = view.state.selection.main.head;
         const word = view.state.wordAt(head);
         if (!word || word.from === word.to) return false;
         runHelp(view);
-        return true; // consumed — don't let it fall through to search/other
+        return true; // consumed — don't let it fall through to anything else
       },
     },
   ];
@@ -330,7 +334,7 @@ export interface OptCmEditorOptions {
   // bare-word completion keeps the exact static behavior. Omit for the
   // test-case editor / c_cpp to keep the default static completion.
   pythonCompleter?: PyCompleter;
-  // When set (and mode is python), the Mod-/ shortcut ("contextual help")
+  // When set (and mode is python), the Alt-/ shortcut ("contextual help")
   // resolves the symbol under the cursor via this async inferrer (backed by the
   // pyodide/Jedi worker) and shows its docstring in a positioned tooltip. Omit
   // for the test-case editor / c_cpp to disable the shortcut.
@@ -421,7 +425,7 @@ export class OptCmEditor {
         dropCursor(),
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
-        // Contextual help (Mod-/): resolve the symbol under the cursor and show
+        // Contextual help (Alt-/): resolve the symbol under the cursor and show
         // its docstring. Compartmented so it reconfigures cleanly; no-op (empty
         // keymap) when no inferrer is wired or the mode isn't python.
         this.helpKeymapCompartment.of(
