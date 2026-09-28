@@ -203,6 +203,38 @@ body {
   overflow: auto;
 }
 
+/* ---- Live Edit: AI-band strays relocated to the top of the AI band --------
+   opt-shell.ts moves the orphaned editor-table strays (#frontendErrorOutput,
+   #unSupportedFeatureBox, the AI reset-button row) from the editor band into a
+   #opt-ai-strays cluster at the TOP of the AI band — right at the horizontal
+   seam that separates the AI panel from the editor/visualizer. Make the band a
+   flex column so that cluster sits compactly at the top and #aichatbox fills
+   the space below it. Scoped to the live page (Default Mode has no strays). */
+#opt-shell[data-page="live"] #opt-ai-band > .opt-band-inner {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#opt-shell[data-page="live"] #opt-ai-strays {
+  flex: 0 0 auto;               /* take only the content height — 0 when all hidden */
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px 0;
+}
+/* #frontendErrorOutput carries min-height:20pt (opt-live.css) which keeps a dead
+   box reserved while empty. Collapse it (and the legacy 550px width) here. */
+#opt-shell[data-page="live"] #opt-ai-strays #frontendErrorOutput {
+  min-height: 0;
+  width: 100%;
+  margin-top: 0;
+}
+/* Let #aichatbox fill the band below the strays and scroll its own content. */
+#opt-shell[data-page="live"] #opt-ai-band #aichatbox {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
 /* AI response text: brighten in dark mode. The live response (#message-out) is
    a fixed light-mode blue (#1a7fd4) that's hard to read on the dark band. Covers
    BOTH the explicit "dark" setting AND "auto" when the OS requests dark: in auto

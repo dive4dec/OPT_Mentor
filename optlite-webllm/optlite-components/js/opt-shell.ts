@@ -345,6 +345,39 @@ export function initOptShell(cfg: OptShellConfig) {
     startVResizer(vResizer, pyInput);
   }
 
+  // --- live page: relocate the orphaned editor-table strays to the AI band --
+  // The Live template wraps editor + visualizer in a 2-column <table>. We lift
+  // #pyInputPane / #pyOutputPane / #aichatbox out into the bands above, but the
+  // <table> (with its <td>) is left behind in the MAIN band holding only AI-
+  // status strays: #frontendErrorOutput, #unSupportedFeatureBox, a 48px spacer,
+  // and the AI reset-button row. Those render as a dead ~75px strip between the
+  // code/visualizer and the AI seam. They're all AI/frontend status, so move the
+  // cluster to the TOP of the AI band (right at the horizontal seam), drop the
+  // now-meaningless spacer, and remove the empty table so the workspace row can
+  // reclaim the freed vertical space.
+  if (cfg.page === "live") {
+    const strayTable = mainInner.querySelector("table");
+    const feo = strayTable && strayTable.querySelector("#frontendErrorOutput");
+    if (strayTable && feo) {
+      const td = strayTable.querySelector("td") || strayTable;
+      const cluster = document.createElement("div");
+      cluster.id = "opt-ai-strays";
+      for (const child of Array.from(td.children)) {
+        // Skip the anonymous 48px spacer ("leave several lines before bottom
+        // controls") — pointless once the controls sit at the top of the AI band.
+        const el = child as HTMLElement;
+        const isSpacer =
+          el.tagName === "DIV" &&
+          !el.id &&
+          el.textContent.trim() === "" &&
+          el.style && el.style.height === "48px";
+        if (!isSpacer) cluster.appendChild(child);
+      }
+      aiInner.insertBefore(cluster, aiInner.firstChild); // top of the AI band, at the seam
+      strayTable.remove();
+    }
+  }
+
   // --- keep AI band visibility in sync with its pane (MutationObserver) -----
   if (aiPane) {
     const mo = new MutationObserver(() => syncBand(aiBand, aiPane as HTMLElement));
