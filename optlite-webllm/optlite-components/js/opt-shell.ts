@@ -33,7 +33,24 @@ export interface OptShellConfig {
   aiPaneId: string;                 // "visualize-ai-panel" | "aichatbox"
   buildPermalink: () => string;      // full, sanitized share URL for current state
   navigate: (target: "visualize" | "live") => void; // same-tab page switch
+  // Keyboard shortcuts surfaced in the top-right "?" popup. Defaults to the
+  // Python editor set; OPT_CPP (no docstring help) passes its own. Only list
+  // shortcuts that actually work in that app.
+  shortcuts?: { keys: string; desc: string }[];
 }
+
+const DEFAULT_SHORTCUTS: { keys: string; desc: string }[] = [
+  { keys: "Shift + Tab", desc: "Docstring help for the symbol under the cursor (outdents at the line start)" },
+  { keys: "Tab", desc: "Indent" },
+  { keys: "Shift + Tab", desc: "Outdent (when the cursor is at the line start)" },
+  { keys: "Ctrl/⌘ + Click", desc: "Add a cursor at the click (multi-cursor)" },
+  { keys: "Ctrl/⌘ + D", desc: "Select the next occurrence of the current word" },
+  { keys: "Ctrl/⌘ + Shift + L", desc: "Select all occurrences of the current word" },
+  { keys: "Alt + drag", desc: "Box / rectangular selection" },
+  { keys: "Ctrl/⌘ + Z", desc: "Undo" },
+  { keys: "Ctrl/⌘ + Shift + Z", desc: "Redo" },
+  { keys: "Esc", desc: "Close the help / autocomplete popup" },
+];
 
 let ready = false;
 
@@ -199,6 +216,105 @@ function startVResizer(resizer: HTMLElement, pane: HTMLElement) {
   resizer.addEventListener("dblclick", () => { pane.style.width = ""; });
 }
 
+// ---------------------------------------------------------------------------
+// Keyboard-shortcuts popover (top-right "⌨" button).
+// ---------------------------------------------------------------------------
+function setupShortcutsPopover(kbdBtn: HTMLElement, shortcuts: { keys: string; desc: string }[]) {
+  const panel = document.createElement("div");
+  panel.className = "opt-shortcuts-panel";
+  panel.id = "opt-shortcuts-panel";
+  panel.setAttribute("role", "dialog");
+  const title = document.createElement("div");
+  title.className = "opt-shortcuts-title";
+  title.textContent = "Keyboard shortcuts";
+  panel.appendChild(title);
+  const list = document.createElement("ul");
+  list.className = "opt-shortcuts-list";
+  for (const s of shortcuts) {
+    const li = document.createElement("li");
+    const k = document.createElement("span");
+    k.className = "opt-shortcut-keys";
+    k.textContent = s.keys;
+    const d = document.createElement("span");
+    d.className = "opt-shortcut-desc";
+    d.textContent = s.desc;
+    li.appendChild(k);
+    li.appendChild(d);
+    list.appendChild(li);
+  }
+  panel.appendChild(list);
+  document.body.appendChild(panel);
+
+  const open = panel.classList.contains("open");
+  const setOpen = (v: boolean) => {
+    panel.classList.toggle("open", v);
+    kbdBtn.setAttribute("aria-expanded", v ? "true" : "false");
+  };
+  kbdBtn.setAttribute("aria-expanded", "false");
+  kbdBtn.addEventListener("click", (e) => { e.stopPropagation(); setOpen(!open); });
+  document.addEventListener("click", (e) => {
+    if (panel.classList.contains("open") && !panel.contains(e as Event as any)) setOpen(false);
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
+}
+
+// ---------------------------------------------------------------------------
+// Live Edit auto-expand.
+// ---------------------------------------------------------------------------
+// The workspace row is [code | v-resizer | viz]. When the visualization pane has
+// no rendered content yet (fresh load / nothing executed — pyOutput is display:
+// none or empty) the viz column and its seam collapse so the code window fills
+// the ENTIRE width. When real content appears (an execution) it re-expands. User
+// resizes still work — we only collapse when there is nothing to show.
+function syncVizColumn(row: HTMLElement, viz: HTMLElement, seam: HTMLElement) {
+  const shown = getComputedStyle(viz).display !== "none" && viz.getBoundingClientRect().width > 0;
+  const hasContent = shown && !!viz.querySelector("svg,canvas") && viz.getBoundingClientRect().height > 8;
+  const collapsed = !hasContent;
+  row.classList.toggle("no-viz", collapsed);
+  const code = row.querySelector("#pyInputPane") as HTMLElement | null;
+  if (collapsed) {
+    // Flex `gap` is only applied between two VISIBLE items, so hiding the viz +
+    // seam lets the code column (the sole visible child) reclaim the full width
+    // (the .no-viz rule makes it width:100% / flex:1). Remember a user-dragged
+    // width so we can restore it when the viz returns, and clear the inline
+    // width so the .no-viz CSS rule can take over.
+    if (code && code.style.width) (row as any)._savedCodeW = code.style.width;
+    viz.style.display = "none";
+    seam.style.display = "none";
+    if (code) code.style.removeProperty("width");
+  } else {
+    viz.style.removeProperty("display");
+    seam.style.removeProperty("display");
+    if (code) {
+      const saved = (row as any)._savedCodeW as string | undefined;
+      if (saved) code.style.setProperty("width", saved, "important");
+      else code.style.removeProperty("width"); // fall back to the 550px default rule
+      delete (row as any)._savedCodeW;
+    }
+  }
+}
+
+// The bottom AI band is anchored at 220px even when there's no conversation.
+// "No content" = the AI response (#message-out) is empty/hidden — i.e. the user
+// hasn't asked anything yet. When empty, collapse the band to ZERO height so the
+// code window fills the entire height (per the requirement), and hide its seam.
+// A conversation appearing, or the user clicking the "Ask AI" nav button
+// (userOpened), keeps it open.
+function makeAiBandController(aiBand: HTMLElement, aiPane: HTMLElement, resizer: HTMLElement) {
+  let userOpened = false;
+  const sync = () => {
+    const msg = aiPane.querySelector("#message-out") as HTMLElement | null;
+    const hasConversation = !!(msg && !msg.classList.contains("hidden") && msg.textContent && msg.textContent.trim().length > 0);
+    const empty = !hasConversation && !userOpened;
+    aiBand.classList.toggle("opt-ai-empty", empty);
+    if (resizer) resizer.style.display = empty ? "none" : "";
+  };
+  const mo = new MutationObserver(sync);
+  mo.observe(aiPane, { subtree: true, attributes: true, attributeFilter: ["style", "class"], childList: true });
+  sync();
+  return { sync, open: () => { userOpened = true; sync(); } };
+}
+
 export function initOptShell(cfg: OptShellConfig) {
   if (ready) return;
   ready = true;
@@ -258,15 +374,42 @@ export function initOptShell(cfg: OptShellConfig) {
   window.addEventListener("opt-theme-change", syncThemeBtn);
   syncThemeBtn();
 
+  const kbdBtn = document.createElement("button");
+  kbdBtn.type = "button";
+  kbdBtn.className = "opt-navbtn";
+  kbdBtn.id = "opt-shortcuts";
+  kbdBtn.title = "Keyboard shortcuts";
+  kbdBtn.innerHTML = '<span class="opt-ico">⌨</span>';
+
+  // Live Edit only: "Ask AI" button. The AI band auto-collapses when there's no
+  // conversation (so the code fills the full height); this button is the
+  // top-nav affordance to bring the panel back (and keeps it open).
+  const askAIbtn = document.createElement("button");
+  askAIbtn.type = "button";
+  askAIbtn.className = "opt-navbtn";
+  askAIbtn.id = "opt-ask-ai";
+  askAIbtn.title = "Open the AI panel";
+  askAIbtn.innerHTML = '<span class="opt-ico">✳️</span><span>Ask AI</span>';
+  if (cfg.page !== "live") askAIbtn.style.display = "none";
+
   navbar.appendChild(brand);
   navbar.appendChild(tabs);
   navbar.appendChild(spacer);
+  navbar.appendChild(askAIbtn);
   navbar.appendChild(permBtn);
   navbar.appendChild(themeBtn);
+  navbar.appendChild(kbdBtn);
 
   // --- content scaffold -----------------------------------------------------
   const content = document.createElement("div");
   content.id = "opt-content";
+
+  // Live-page workspace-row handles (set in the workspace-row block below; used
+  // by the auto-expand observers at the end). Declared here so they're in scope
+  // for both.
+  let workspaceRow: HTMLElement | null = null;
+  let vizPane: HTMLElement | null = null;
+  let vizResizer: HTMLElement | null = null;
 
   const aiBand = document.createElement("div");
   aiBand.className = "opt-band opt-hidden";
@@ -343,6 +486,9 @@ export function initOptShell(cfg: OptShellConfig) {
 
     row.appendChild(pyOutput);  // -> right
     startVResizer(vResizer, pyInput);
+    workspaceRow = row;
+    vizPane = pyOutput;
+    vizResizer = vResizer;
   }
 
   // --- live page: relocate the orphaned editor-table strays to the AI band --
@@ -387,6 +533,37 @@ export function initOptShell(cfg: OptShellConfig) {
 
   // The main band always has exactly one visible pane (edit XOR display); it
   // stays flex:1 regardless, so no band hiding is needed there.
+
+  // --- Live Edit auto-expand wiring -----------------------------------------
+  // (workspaceRow / vizPane / vizResizer are declared at the top of the function
+  //  and set in the workspace-row block above.)
+  if (cfg.page === "live") {
+    // viz content changes (execution) -> show/hide the viz column
+    if (vizPane && workspaceRow && vizResizer) {
+      const row = workspaceRow, viz = vizPane, seam = vizResizer;
+      const syncViz = () => syncVizColumn(row, viz, seam);
+      const vmo = new MutationObserver(syncViz);
+      vmo.observe(viz, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class"] });
+      syncViz();
+      window.addEventListener("resize", syncViz);
+    }
+    // AI conversation appears/disappears -> collapse/expand the bottom AI band
+    if (aiPane) {
+      const aiCtl = makeAiBandController(aiBand, aiPane as HTMLElement, resizer);
+      askAIbtn.addEventListener("click", () => {
+        aiCtl.open();
+        const ask = document.getElementById("askAI") as HTMLElement | null;
+        ask && ask.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      // Also treat the legacy "Ask AI" button click inside the pane as a
+      // user-opened signal (band is open by then, but stay consistent).
+      const askLegacy = document.getElementById("askAI");
+      if (askLegacy) askLegacy.addEventListener("click", () => aiCtl.open());
+    }
+  }
+
+  // Keyboard-shortcuts popover (both pages).
+  setupShortcutsPopover(kbdBtn, cfg.shortcuts || DEFAULT_SHORTCUTS);
 
   startResizer(resizer, aiBand);
 }

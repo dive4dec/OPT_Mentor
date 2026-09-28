@@ -160,34 +160,59 @@ body {
   height: auto !important;
   max-width: 100% !important;
 }
+/* Live Edit, no visualization yet: the code column takes the ENTIRE width (the
+   viz + seam are display:none via JS, and JS clears the drag-set inline width).
+   This beats the 550px default above (same specificity, later in source). The
+   height rule below (44vh) also lifts so the code uses the full band height when
+   the AI band is collapsed too. */
+#opt-shell[data-page="live"] .opt-workspace-row.no-viz #pyInputPane {
+  flex: 1 1 auto;
+  width: 100% !important;
+  min-width: 0;
+}
+#opt-shell[data-page="live"] .opt-workspace-row.no-viz #pyInputPane > #codeInputPane {
+  flex: 1 1 auto;
+  height: auto !important;   /* drop the 44vh cap so the editor fills the band */
+  min-height: 0;
+}
 
 /* ---- vertical drag seam (Live Edit: code | visualizer boundary) ---------- */
+/* Narrow by design: the VISIBLE bar is a 2px line with a small grab handle; the
+   6px element is just an invisible drag hit-area (transparent, doesn't block the
+   view). Hover / drag lights it up. */
 .opt-resizer-v {
   flex: 0 0 auto;
   width: 6px;
   margin: 0 -3px;             /* overlap the row's gap so there's no dead zone */
-  background: var(--opt-border-soft);
-  border-left: 1px solid var(--opt-border);
-  border-right: 1px solid var(--opt-border);
+  background: transparent;    /* no opaque fill blocking the code/viz */
   cursor: col-resize;
   z-index: 6;
   transition: background .12s;
   position: relative;
   touch-action: none;         /* touch: drag the seam, never scroll the page */
 }
-.opt-resizer-v::after {
+.opt-resizer-v::before {      /* the thin always-visible bar */
+  content: "";
+  position: absolute; top: 0; bottom: 0; left: 50%;
+  width: 2px; transform: translateX(-50%);
+  background: var(--opt-border);
+  opacity: .55;
+  transition: opacity .12s, background .12s;
+}
+.opt-resizer-v::after {        /* the grab handle */
   content: "";
   position: absolute; left: 50%; top: 50%;
-  width: 3px; height: 42px;
+  width: 6px; height: 28px;
   transform: translate(-50%, -50%);
-  border-radius: 2px;
+  border-radius: 3px;
   background: var(--opt-border);
-  opacity: .8;
+  opacity: .9;
+  transition: background .12s;
 }
-.opt-resizer-v:hover,
-.opt-resizer-v.opt-dragging { background: var(--opt-accent); }
+.opt-resizer-v:hover::before,
+.opt-resizer-v.opt-dragging::before { background: var(--opt-accent); opacity: 1; }
 .opt-resizer-v:hover::after,
-.opt-resizer-v.opt-dragging::after { background: #fff; }
+.opt-resizer-v.opt-dragging::after { background: var(--opt-accent); }
 
 /* AI band host */
 .opt-band > .opt-band-inner { width: 100%; height: 100%; }
@@ -309,32 +334,50 @@ html[data-theme="dark"] #visualize-ai-panel select {
 .opt-band.opt-hidden { flex: 0 0 0 !important; height: 0 !important; }
 .opt-band.opt-hidden + .opt-resizer-h { display: none; }
 
+/* Live Edit: AI band is present but has no conversation yet. Collapse it to
+   ZERO height so the code window fills the entire height (per requirement). The
+   seam above it is hidden by JS (makeAiBandController); the "Ask AI" nav button
+   reopens it. !important beats the base #opt-ai-band { height: 220px }. */
+#opt-shell[data-page="live"] #opt-ai-band.opt-ai-empty {
+  height: 0 !important;
+  overflow: hidden;
+}
+
 /* ---- horizontal drag seam (AI | main boundary) ------------------------- */
+/* Narrow by design (mirrors the vertical seam): a 2px visible line + grab
+   handle over an invisible 6px drag hit-area. */
 .opt-resizer-h {
   flex: 0 0 auto;
   height: 6px;
   margin: -3px 0;
-  background: var(--opt-border-soft);
-  border-top: 1px solid var(--opt-border);
-  border-bottom: 1px solid var(--opt-border);
+  background: transparent;
   cursor: row-resize;
   z-index: 6;
   transition: background .12s;
   position: relative;
 }
-.opt-resizer-h::after {
+.opt-resizer-h::before {      /* the thin always-visible bar */
+  content: "";
+  position: absolute; left: 0; right: 0; top: 50%;
+  height: 2px; transform: translateY(-50%);
+  background: var(--opt-border);
+  opacity: .55;
+  transition: opacity .12s, background .12s;
+}
+.opt-resizer-h::after {        /* the grab handle */
   content: "";
   position: absolute; left: 50%; top: 50%;
-  width: 42px; height: 3px;
+  width: 28px; height: 6px;
   transform: translate(-50%, -50%);
-  border-radius: 2px;
+  border-radius: 3px;
   background: var(--opt-border);
-  opacity: .8;
+  opacity: .9;
+  transition: background .12s;
 }
-.opt-resizer-h:hover,
-.opt-resizer-h.opt-dragging { background: var(--opt-accent); }
+.opt-resizer-h:hover::before,
+.opt-resizer-h.opt-dragging::before { background: var(--opt-accent); opacity: 1; }
 .opt-resizer-h:hover::after,
-.opt-resizer-h.opt-dragging::after { background: #fff; }
+.opt-resizer-h.opt-dragging::after { background: var(--opt-accent); }
 
 /* ---- permalink toast --------------------------------------------------- */
 #opt-toast {
@@ -349,6 +392,44 @@ html[data-theme="dark"] #visualize-ai-panel select {
 }
 #opt-toast.opt-show { opacity: 1; transform: translateX(-50%) translateY(0); }
 html[data-theme="dark"] #opt-toast { background: #e6edf3; color: #0d1117; }
+
+/* ---- keyboard-shortcuts popover ---------------------------------------- */
+#opt-shortcuts-panel {
+  position: fixed;
+  top: 52px; right: 12px;
+  min-width: 300px; max-width: 420px;
+  background: var(--opt-bg);
+  color: var(--opt-text);
+  border: 1px solid var(--opt-border, #d0d0d0);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.18);
+  z-index: 1001;
+  padding: 12px 14px;
+  opacity: 0;
+  transform: translateY(-6px) scale(.98);
+  transform-origin: top right;
+  pointer-events: none;
+  transition: opacity .14s, transform .14s;
+}
+#opt-shortcuts-panel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.opt-shortcuts-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+.opt-shortcuts-list { list-style: none; margin: 0; padding: 0; }
+.opt-shortcuts-list li {
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 4px 0; font-size: 13px;
+}
+.opt-shortcut-keys {
+  flex: 0 0 150px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  background: var(--opt-btn-bg-hover, rgba(0,0,0,.06));
+  border: 1px solid var(--opt-border, #d0d0d0);
+  border-radius: 5px;
+  padding: 1px 7px;
+  text-align: center;
+  white-space: nowrap;
+}
+.opt-shortcut-desc { flex: 1 1 auto; line-height: 1.35; }
 
 /* ---- redundant in-page controls (now in the nav bar) ----------------- */
 /* The nav bar now provides: the mode tabs (Visualize / Live Edit), the
