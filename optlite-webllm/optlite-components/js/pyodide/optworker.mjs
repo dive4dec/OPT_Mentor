@@ -47,6 +47,63 @@ def _cm_complete(code, line, column):
     return;
   }
 
+  // --- Symbol infer (Jedi, static analysis) — "what is this name?" ----------
+  // Request: { type:'infer', id, code, line, column }   (1-based line, 0-based col)
+  // Reply:   { name, type, module, tostr, doc, id }  |  { id }  (empty when nothing resolved)
+  //
+  // jedi.Script(code).infer(line, column) resolves the *identifier at the cursor*
+  // to its definition(s) without executing. Each InferenceResult exposes .module
+  // (name), .to_string() (human-friendly repr, e.g. "def str(...)" / "class int"),
+  // and .docstring (the symbol's own Python docstring — the actual help text).
+  // We take the first result. `line`/`column` are passed as real arguments so
+  // user code with quotes/newlines can't break the Python source.
+  if (context.type === 'infer') {
+    try {
+      if (!self._cm_infer) {
+        await self.pyodide.loadPackage('jedi');
+        self.pyodide.runPython(`
+import jedi, json
+def _cm_infer(code, line, column):
+    def _s(x):
+        try:
+            return '' if x is None else str(x)
+        except Exception:
+            return ''
+    try:
+        results = list(jedi.Script(code).infer(line=line, column=column))
+    except Exception:
+        return ''
+    if not results:
+        return ''
+    r = results[0]
+    try:
+        tostr = r.to_string()
+    except Exception:
+        tostr = ''
+    # .docstring is a STRING in jedi <0.20 but a METHOD in >=0.20 — handle both.
+    try:
+        ds = r.docstring
+        doc = ds if isinstance(ds, str) else (ds() if callable(ds) else '')
+        doc = _s(doc)
+    except Exception:
+        doc = ''
+    # .module is absent/None for builtins and unresolvable names — getattr-guard it.
+    d = {'name': _s(r.name), 'type': _s(r.type),
+         'module': _s(getattr(r, 'module', '')), 'tostr': _s(tostr), 'doc': doc}
+    return json.dumps(d)
+`);
+        self._cm_infer = self.pyodide.globals.get('_cm_infer');
+      }
+      const { code, line, column } = context;
+      const raw = self._cm_infer(code, line, column) || '';
+      const parsed = raw ? JSON.parse(raw) : null;
+      self.postMessage(parsed ? Object.assign({}, parsed, { id }) : { id });
+    } catch (error) {
+      self.postMessage({ error: 'infer failed: ' + error.message, id });
+    }
+    return;
+  }
+
   try {
     let results;
     if (id < 0) { // initialize worker

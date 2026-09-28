@@ -178,3 +178,40 @@ html[data-theme="dark"] {
     --viz-panel-border: #30363d;
   }
 }
+
+/* --- Contextual help tooltip (Mod-/ in the Python editor) -----------------
+   A small docstring/signature panel anchored to the symbol under the cursor.
+   Rendered by cm-editor.ts inside .cm-editor (position:relative), so the
+   absolute positioning here is relative to the editor. Follows the app theme
+   via the editor custom properties. */
+.opt-help-tip {
+  position: absolute;
+  z-index: 40;
+  width: 360px;
+  max-height: 260px;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--opt-ai-border, #d0e0ff);
+  background: var(--opt-ai-bg, #f7f9fc);
+  color: var(--opt-editor-text, #1f2937);
+  font: 13px/1.5 ui-monospace, Consolas, "Monaco", Menlo, "Courier New", monospace;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+.opt-help-tip .opt-help-sig {
+  font-weight: 600;
+  color: var(--opt-editor-text, #1f2937);
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+.opt-help-tip .opt-help-doc {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: var(--opt-editor-text, #1f2937);
+  opacity: 0.9;
+}
+.opt-help-tip .opt-help-none {
+  font-style: italic;
+  color: var(--opt-editor-gutter-fg, #9ca3af);
+}

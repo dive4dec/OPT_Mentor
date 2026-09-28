@@ -134,4 +134,44 @@ const pyComplete = (() => {
   };
 })();
 
-export { asyncRun, pyComplete };
+// --- Symbol inference (Jedi, static analysis) — "what is this name?" --------
+// Mirrors pyComplete: async, non-blocking, with a client-side timeout so a busy
+// worker degrades to "no help" instead of hanging the shortcut. Returns the
+// resolved symbol's name/type/module/docstring, or null if it can't resolve
+// (e.g. a plain local variable with no docstring, or an unknown name).
+export type PyInferResult = {
+  name: string; type: string; module: string; tostr: string; doc: string;
+};
+
+let inferId = 0;
+const INFER_TIMEOUT_MS = 6000;
+const inferTimeouts: Record<number, any> = {};
+
+const pyInfer = (() => {
+  return (code: string, line: number, column: number): Promise<PyInferResult | null> => {
+    // Own negative id namespace (one below completion's) so an infer reply can
+    // never be consumed by a concurrent completion/auto-execution in the shared
+    // `callbacks` map.
+    const id = -100 - inferId++;
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value: PyInferResult | null) => {
+        if (settled) return;
+        settled = true;
+        const t = inferTimeouts[id];
+        if (t) { clearTimeout(t); delete inferTimeouts[id]; }
+        delete callbacks[id];
+        resolve(value);
+      };
+      callbacks[id] = (data: any) => {
+        finish(data && !data.error && data.tostr !== undefined ? (data as PyInferResult) : null);
+      };
+      inferTimeouts[id] = setTimeout(() => finish(null), INFER_TIMEOUT_MS);
+      init.then(() => {
+        pyodideWorker.postMessage({ type: 'infer', code, line, column, id });
+      }).catch(() => finish(null));
+    });
+  };
+})();
+
+export { asyncRun, pyComplete, pyInfer };

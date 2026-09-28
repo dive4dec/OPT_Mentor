@@ -250,6 +250,15 @@ export type PyCompleter = (
   code: string, line: number, column: number,
 ) => Promise<Array<{ name: string; type: string }> | null>;
 
+// A function that asks the (already-running) pyodide worker to RESOLVE the
+// symbol at a cursor position — its name, type, module, a human-friendly repr
+// (tostr), and the symbol's own docstring. Injected from the caller (which
+// imports it from ./pyodide/runner); cm-editor.ts stays self-contained. Returns
+// null when the symbol can't be resolved (unknown name / a bare local variable).
+export type PyInferrer = (
+  code: string, line: number, column: number,
+) => Promise<{ name: string; type: string; module: string; tostr: string; doc: string } | null>;
+
 function makeJediPythonSource(completer: PyCompleter) {
   return (context: CompletionContext): CompletionResult | null | Promise<CompletionResult | null> => {
     const pos = context.pos;
@@ -284,6 +293,29 @@ function makeJediPythonSource(completer: PyCompleter) {
   };
 }
 
+// Contextual-help keybinding. Mod-/ (Ctrl+/ on Win/Linux, Cmd+/ on Mac) resolves
+// the identifier under the cursor via the inferrer and shows its docstring in a
+// tooltip. runHelp is async (waits on the worker) but fires-and-forgets here:
+// returning true from a keymap handler is fine while an async promise is pending.
+// Returns false (let CM6 keep handling the key) when no inferrer is wired or the
+// cursor isn't on a word.
+function makeHelpKeymap(inferrer: PyInferrer | undefined, runHelp: (view: EditorView) => void) {
+  if (!inferrer) return [];
+  return [
+    {
+      key: "Mod-/",
+      preventDefault: true,
+      run: (view: EditorView): boolean => {
+        const head = view.state.selection.main.head;
+        const word = view.state.wordAt(head);
+        if (!word || word.from === word.to) return false;
+        runHelp(view);
+        return true; // consumed — don't let it fall through to search/other
+      },
+    },
+  ];
+}
+
 export interface OptCmEditorOptions {
   container: HTMLElement;
   value: string;
@@ -298,6 +330,11 @@ export interface OptCmEditorOptions {
   // bare-word completion keeps the exact static behavior. Omit for the
   // test-case editor / c_cpp to keep the default static completion.
   pythonCompleter?: PyCompleter;
+  // When set (and mode is python), the Mod-/ shortcut ("contextual help")
+  // resolves the symbol under the cursor via this async inferrer (backed by the
+  // pyodide/Jedi worker) and shows its docstring in a positioned tooltip. Omit
+  // for the test-case editor / c_cpp to disable the shortcut.
+  pythonInferrer?: PyInferrer;
   onChange?: (text: string) => void;
 }
 
@@ -305,6 +342,11 @@ export class OptCmEditor {
   private view: EditorView;
   private modeCompartment = new Compartment();
   private highlightCompartment = new Compartment();
+  private helpKeymapCompartment = new Compartment();
+  private helpInferId = 0;
+  private helpBox: HTMLElement | null = null;
+  private onHelpEsc: ((e: KeyboardEvent) => void) | null = null;
+  private onHelpClick: ((e: MouseEvent) => void) | null = null;
   private opts: OptCmEditorOptions;
 
   constructor(opts: OptCmEditorOptions) {
@@ -379,6 +421,12 @@ export class OptCmEditor {
         dropCursor(),
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
+        // Contextual help (Mod-/): resolve the symbol under the cursor and show
+        // its docstring. Compartmented so it reconfigures cleanly; no-op (empty
+        // keymap) when no inferrer is wired or the mode isn't python.
+        this.helpKeymapCompartment.of(
+          keymap.of(makeHelpKeymap(opts.pythonInferrer, () => this.runHelpAtCursor()))
+        ),
         // Jedi-backed attribute completion for the Python editor. When a
         // pythonCompleter is injected and the mode is python, we replace the
         // default source with one that serves real attribute lists
@@ -403,6 +451,21 @@ export class OptCmEditor {
     });
 
     this.view = new EditorView({ parent: opts.container, state: startState });
+
+    // Dismiss the contextual-help tooltip on Escape or a click elsewhere.
+    // Plain document-level listeners (NOT CM6 domEventHandlers — see memory:
+    // those race CM6's MouseSelection and were banned for this reason).
+    if (opts.pythonInferrer) {
+      this.onHelpEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape") this.dismissHelp();
+      };
+      this.onHelpClick = (e: MouseEvent) => {
+        // Dismiss when clicking outside the tip; clicking the tip itself keeps it.
+        if (this.helpBox && !this.helpBox.contains(e.target as Node)) this.dismissHelp();
+      };
+      document.addEventListener("keydown", this.onHelpEsc);
+      document.addEventListener("mousedown", this.onHelpClick);
+    }
   }
 
   getValue(): string {
@@ -482,5 +545,89 @@ export class OptCmEditor {
     this.focus();
   }
 
-  destroy() { this.view.destroy(); }
+  destroy() {
+    this.dismissHelp();
+    if (this.onHelpEsc) document.removeEventListener("keydown", this.onHelpEsc);
+    if (this.onHelpClick) document.removeEventListener("mousedown", this.onHelpClick);
+    this.onHelpEsc = null;
+    this.onHelpClick = null;
+    this.view.destroy();
+  }
+
+  // --- Contextual help: explain the symbol under the cursor (Mod-/) --------
+  // Resolves the word at the cursor via the injected inferrer (Jedi in the
+  // pyodide worker) and shows its docstring in a small tooltip anchored to the
+  // word. Fully local — no AI, no network. No-op when no inferrer is wired or
+  // the cursor isn't on a resolvable name.
+  private runHelpAtCursor(): void {
+    const inferrer = this.opts.pythonInferrer;
+    if (!inferrer || (this.opts.mode || "python") !== "python") return;
+    const view = this.view;
+    const head = view.state.selection.main.head;
+    const word = view.state.wordAt(head);
+    if (!word || word.from === word.to) return;
+    const line = view.state.doc.lineAt(head);
+    const lineNo = line.number;          // 1-based
+    const column = head - line.from;     // 0-based
+    const reqId = ++this.helpInferId;
+    const coords = view.coordsAtPos(word.from);
+    if (!coords) return;
+    inferrer(view.state.doc.toString(), lineNo, column).then((info) => {
+      // Drop the result if a newer help request / dismiss superseded it.
+      if (reqId !== this.helpInferId) return;
+      this.showHelpBox(view, info, word, coords);
+    });
+  }
+
+  private showHelpBox(
+    view: EditorView,
+    info: { name: string; type: string; module: string; tostr: string; doc: string } | null,
+    word: { from: number; to: number },
+    anchor: { top: number; left: number },
+  ): void {
+    this.dismissHelp();
+    const box = document.createElement("div");
+    box.className = "opt-help-tip";
+    if (info && (info.tostr || info.doc)) {
+      const sig = document.createElement("div");
+      sig.className = "opt-help-sig";
+      sig.textContent = info.tostr || info.name;
+      box.appendChild(sig);
+      const docText = (info.doc || "").trim();
+      if (docText) {
+        const body = document.createElement("div");
+        body.className = "opt-help-doc";
+        body.textContent = docText;
+        box.appendChild(body);
+      }
+    } else {
+      const none = document.createElement("div");
+      none.className = "opt-help-none";
+      const name = (view.state.doc.sliceString(word.from, word.to)) || "this name";
+      none.textContent = "No local help available for \u201c" + name + "\u201d (unknown symbol or a local variable with no docstring).";
+      box.appendChild(none);
+    }
+    this.view.dom.appendChild(box);
+    // Position next to the word. coordsAt() is viewport-relative; the box is
+    // absolutely positioned inside this.view.dom, so convert with the parent's
+    // page rect (getBoundingClientRect already accounts for the scroller's
+    // scroll offset). Clamp to the visible viewport.
+    const host = this.view.dom;
+    const hostRect = host.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const boxW = 360, boxH = Math.min(box.scrollHeight || 120, 260);
+    let left = anchor.left - hostRect.left + 6;
+    let top = anchor.top - hostRect.top - 6;
+    if (anchor.left + 6 + boxW > vw - 6) left = anchor.left - hostRect.left - boxW - 6;
+    if (left < 4) left = 4;
+    if (anchor.top - 6 + boxH > vh - 6) top = anchor.top - hostRect.top - boxH - 6;
+    if (top < 4) top = 4;
+    box.style.left = left + "px";
+    box.style.top = top + "px";
+    this.helpBox = box;
+  }
+
+  dismissHelp() {
+    if (this.helpBox) { this.helpBox.remove(); this.helpBox = null; }
+  }
 }
