@@ -274,22 +274,20 @@ function syncVizColumn(row: HTMLElement, viz: HTMLElement, seam: HTMLElement) {
   if (collapsed) {
     // Flex `gap` is only applied between two VISIBLE items, so hiding the viz +
     // seam lets the code column (the sole visible child) reclaim the full width
-    // (the .no-viz rule makes it width:100% / flex:1). Remember a user-dragged
-    // width so we can restore it when the viz returns, and clear the inline
-    // width so the .no-viz CSS rule can take over.
-    if (code && code.style.width) (row as any)._savedCodeW = code.style.width;
+    // (the .no-viz rule makes it width:100% / flex:1). Drop the inline width so
+    // that rule takes over. (We do NOT remember any user-dragged width — the
+    // seam is hidden while collapsed so it can't be dragged here.)
     viz.style.display = "none";
     seam.style.display = "none";
     if (code) code.style.removeProperty("width");
   } else {
     viz.style.removeProperty("display");
     seam.style.removeProperty("display");
-    if (code) {
-      const saved = (row as any)._savedCodeW as string | undefined;
-      if (saved) code.style.setProperty("width", saved, "important");
-      else code.style.removeProperty("width"); // fall back to the 550px default rule
-      delete (row as any)._savedCodeW;
-    }
+    // IMPORTANT: do NOT touch the code column's width here. This function also
+    // runs on every window `resize` (and drag-end dispatches one), so clearing
+    // or resetting the width here would snap a user's drag back to 550px. A user
+    // drag sets an inline width that must survive; with none set, the 550px
+    // default rule applies naturally.
   }
 }
 
