@@ -244,8 +244,11 @@ function setupShortcutsPopover(kbdBtn: HTMLElement, shortcuts: { keys: string; d
   panel.appendChild(list);
   document.body.appendChild(panel);
 
-  const open = panel.classList.contains("open");
+  // Mutable open-state, kept in sync by setOpen, so the button TOGGLES (a click
+  // on the keyboard icon hides an already-open menu, not just opens it).
+  let open = false;
   const setOpen = (v: boolean) => {
+    open = v;
     panel.classList.toggle("open", v);
     kbdBtn.setAttribute("aria-expanded", v ? "true" : "false");
   };
