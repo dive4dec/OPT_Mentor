@@ -310,8 +310,11 @@ function syncVizColumn(row: HTMLElement, viz: HTMLElement, seam: HTMLElement) {
 //
 // A *new* error (#askAI transitioning invisible -> visible) always re-opens the
 // band and clears a manual "closed", so a fresh error is never silently hidden.
-function makeAiBandController(aiBand: HTMLElement, aiPane: HTMLElement, resizer: HTMLElement) {
-  const askAI = aiPane.querySelector("#askAI") as HTMLElement | null;
+function makeAiBandController(aiBand: HTMLElement, resizer: HTMLElement) {
+  // #askAI now lives in the strays cluster (inside aiBand) so it sits beside the
+  // error it explains. Find it across the whole band and observe the band
+  // subtree, so its display change is still caught.
+  const askAI = aiBand.querySelector("#askAI") as HTMLElement | null;
   let userForce: "open" | "closed" | null = null;   // manual override via the Debug button
   let lastAskVisible = false;
   let lastExpanded = false;
@@ -335,7 +338,7 @@ function makeAiBandController(aiBand: HTMLElement, aiPane: HTMLElement, resizer:
   };
 
   const mo = new MutationObserver(sync);
-  mo.observe(aiPane, { subtree: true, attributes: true, attributeFilter: ["style", "class"], childList: true });
+  mo.observe(aiBand, { subtree: true, attributes: true, attributeFilter: ["style", "class"], childList: true });
   sync();
   return {
     sync,
@@ -552,6 +555,21 @@ export function initOptShell(cfg: OptShellConfig) {
         if (!isSpacer) cluster.appendChild(child);
       }
       aiInner.insertBefore(cluster, aiInner.firstChild); // top of the AI band, at the seam
+      // Put the "Ask AI" button on the SAME ROW as the error it explains. It used
+      // to sit (full-width) on its own row inside #aichatbox, below the strays.
+      // #frontendErrorOutput is the first child of this cluster; #askAI is in
+      // #aichatbox. Wrap error + button in a flex row: the traceback fills the
+      // left, a compact right-aligned "Ask AI" button sits at the top-right of
+      // the error block (see .opt-error-askrow in opt-shell.css).
+      const feoRowEl = cluster.querySelector("#frontendErrorOutput") as HTMLElement | null;
+      const askAI = document.getElementById("askAI") as HTMLElement | null;
+      if (feoRowEl && askAI) {
+        const askRow = document.createElement("div");
+        askRow.className = "opt-error-askrow";
+        cluster.insertBefore(askRow, feoRowEl); // empty row takes the error's slot
+        askRow.appendChild(feoRowEl);           // move the error text in (left)
+        askRow.appendChild(askAI);              // move Ask AI out of #aichatbox (right)
+      }
       strayTable.remove();
     }
   }
@@ -583,7 +601,7 @@ export function initOptShell(cfg: OptShellConfig) {
     // (its own MutationObserver does that); the top-nav "Debug" button is a
     // manual toggle that overrides the current error state.
     if (aiPane) {
-      const aiCtl = makeAiBandController(aiBand, aiPane as HTMLElement, resizer);
+      const aiCtl = makeAiBandController(aiBand, resizer);
       debugBtn.addEventListener("click", () => aiCtl.toggle());
     }
   }

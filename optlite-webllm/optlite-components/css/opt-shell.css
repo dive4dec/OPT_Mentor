@@ -246,12 +246,46 @@ body {
   box-sizing: border-box;
   padding: 6px 10px 0;
 }
-/* #frontendErrorOutput carries min-height:20pt (opt-live.css) which keeps a dead
-   box reserved while empty. Collapse it (and the legacy 550px width) here. */
-#opt-shell[data-page="live"] #opt-ai-strays #frontendErrorOutput {
-  min-height: 0;
+/* The error + its "Ask AI" action share one row: the traceback fills the left,
+   a compact button sits at the top-right. (opt-shell.ts wraps them in
+   .opt-error-askrow.) #frontendErrorOutput had min-height:20pt + a legacy 550px
+   width that reserved a dead box while empty — collapse that, and let it flex
+   to fill the left of the row. */
+#opt-shell[data-page="live"] #opt-ai-strays .opt-error-askrow {
+  display: flex;
+  align-items: flex-start;      /* button tops out with the first line of the traceback */
+  gap: 12px;
   width: 100%;
+}
+#opt-shell[data-page="live"] #opt-ai-strays .opt-error-askrow #frontendErrorOutput {
+  min-height: 0;
+  flex: 1 1 auto;               /* fill the left; wrap long tracebacks */
+  min-width: 0;
   margin-top: 0;
+}
+/* #askAI was relocated OUT of #aichatbox (so it no longer inherits
+   "#aichatbox button { width:25%; background:#007bff; … }"), so re-apply that
+   look here but compact + right-aligned. It's a flex item that shrinks to its
+   text — no more full-width row of dead space to its right. */
+#opt-shell[data-page="live"] #opt-ai-strays .opt-error-askrow #askAI {
+  flex: 0 0 auto;
+  width: auto;
+  align-self: flex-start;
+  margin-top: 1px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background-color: #007bff;
+  color: #fff;
+  cursor: pointer;
+  font-size: 11pt;
+}
+#opt-shell[data-page="live"] #opt-ai-strays .opt-error-askrow #askAI:disabled {
+  background-color: lightgray;
+  cursor: not-allowed;
+}
+#opt-shell[data-page="live"] #opt-ai-strays .opt-error-askrow #askAI:hover:not(:disabled) {
+  background-color: #0056b3;
 }
 /* Let #aichatbox fill the band below the strays and scroll its own content. */
 #opt-shell[data-page="live"] #opt-ai-band #aichatbox {
