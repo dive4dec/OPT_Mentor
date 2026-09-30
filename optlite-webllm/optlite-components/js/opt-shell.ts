@@ -104,6 +104,22 @@ function syncBand(band: HTMLElement, pane: HTMLElement) {
   }
 }
 
+// Fire a window resize event at most once per animation frame. The visualizer
+// repaints its jsPlumb connectors on a window resize (opt-frontend.ts:
+// $(window).resize(redrawConnectors)). While a seam is being DRAGGED the viz
+// pane resizes live on every mousemove, so without per-frame repaint the
+// connectors hang at their stale geometry (floating over the seam) until the
+// drag releases. rAF-throttle keeps it to one repaint per frame.
+let optResizePending = false;
+function fireOptResize() {
+  if (optResizePending) return;
+  optResizePending = true;
+  requestAnimationFrame(() => {
+    optResizePending = false;
+    window.dispatchEvent(new Event("resize"));
+  });
+}
+
 function startResizer(resizer: HTMLElement, band: HTMLElement) {
   // Drag the seam between the AI band and the main band to resize the AI band's
   // height. The AI band is anchored to the BOTTOM of the page, so the seam is
@@ -133,6 +149,7 @@ function startResizer(resizer: HTMLElement, band: HTMLElement) {
     let h = startH - dy; // bottom-anchored band: drag down shrinks, up grows
     h = Math.max(0, Math.min(Math.floor(window.innerHeight * 0.8), h)); // clamp
     band.style.height = h + "px";
+    fireOptResize(); // keep the viz connectors tracking the new band height live
     // Lock touch to vertical (kill horizontal scroll/pan) and cancel the event.
     e.cancelable && (e as any).preventDefault && (e as any).preventDefault();
   };
@@ -189,6 +206,7 @@ function startVResizer(resizer: HTMLElement, pane: HTMLElement) {
     // (#opt-main-band .opt-band-inner #pyInputPane { width:100% !important })
     // otherwise wins the cascade and the drag would do nothing.
     pane.style.setProperty("width", w + "px", "important");
+    fireOptResize(); // keep the viz connectors tracking the new code↔viz split live
     // Lock touch to horizontal and cancel (kills vertical page scroll).
     e.cancelable && (e as any).preventDefault && (e as any).preventDefault();
   };
