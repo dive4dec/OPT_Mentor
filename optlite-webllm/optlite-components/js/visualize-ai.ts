@@ -3,6 +3,7 @@ declare const __API_BASE_URL__: string | undefined;
 declare const __API_KEY__: string | undefined;
 declare const __API_MODEL__: string | undefined;
 declare const __API_DEFAULT_MODE__: string | undefined;
+declare const __API_HIDE_API_PANEL__: boolean | undefined;
 declare const __SINGLE_MODE__: string | undefined;
 
 import * as webllm from "../../webllm-components";
@@ -344,7 +345,236 @@ async function sendAskAI(question: string) {
   }
 }
 
+/*************** Runtime AI config (shared with the live page) ***************/
+// The default page and the live page share ONE OpenAI-compatible API
+// configuration, persisted to the SAME localStorage key ('api_config') that
+// webllm.ts uses — so an endpoint/key/model entered on either page is picked
+// up by the other. Before this, the default page had NO runtime config UI: the
+// API path (callOpenAIAPI) existed, but API_CONFIG could only come from
+// build-time __API_*__ defines, which are all empty on the public Pages build.
+// These functions add the "AI Tutor" status bar + config panel (mirroring
+// live.html and the CPP default page) and wire it into this page's existing
+// call path.
+function vizHidePanel(): boolean {
+  const w: any = (window as any) || {};
+  return (typeof __API_HIDE_API_PANEL__ !== 'undefined')
+    ? (!!__API_HIDE_API_PANEL__)
+    : (!!w.API_HIDE_API_PANEL);
+}
+
+// Read the shared api_config from localStorage; fall back to build-time
+// __API_*__ defines / window flags when nothing is saved. Mirrors
+// loadAPIConfig() in webllm.ts so both pages agree on the same config.
+function loadVizAPIConfig() {
+  const w: any = (window as any) || {};
+  if (vizHidePanel()) {
+    try { localStorage.removeItem('api_config'); } catch { /* ignore */ }
+    return;
+  }
+  let hadLocal = false;
+  try {
+    const saved = localStorage.getItem('api_config');
+    if (saved) {
+      const config = JSON.parse(saved);
+      API_CONFIG.enabled = (config.enabled ?? API_CONFIG.enabled);
+      API_CONFIG.baseUrl = (config.baseUrl ?? API_CONFIG.baseUrl);
+      API_CONFIG.apiKey = (config.apiKey ?? API_CONFIG.apiKey);
+      API_CONFIG.model = (config.model ?? API_CONFIG.model);
+      hadLocal = !!(API_CONFIG.baseUrl || API_CONFIG.apiKey || API_CONFIG.model);
+    }
+  } catch { /* ignore malformed config */ }
+  if (!hadLocal && (!API_CONFIG.baseUrl && !API_CONFIG.apiKey && !API_CONFIG.model)) {
+    if (typeof __API_BASE_URL__ !== 'undefined') API_CONFIG.baseUrl = __API_BASE_URL__;
+    if (typeof __API_KEY__ !== 'undefined') API_CONFIG.apiKey = __API_KEY__;
+    if (typeof __API_MODEL__ !== 'undefined') API_CONFIG.model = __API_MODEL__;
+    if (typeof __API_DEFAULT_MODE__ !== 'undefined' && __API_DEFAULT_MODE__ === 'api') API_CONFIG.enabled = true;
+    if (!API_CONFIG.baseUrl && w.API_BASE_URL) API_CONFIG.baseUrl = w.API_BASE_URL;
+    if (!API_CONFIG.apiKey && (w.API_KEY !== undefined)) API_CONFIG.apiKey = w.API_KEY;
+    if (!API_CONFIG.model && w.API_MODEL) API_CONFIG.model = w.API_MODEL;
+    if (API_CONFIG.baseUrl || API_CONFIG.apiKey || API_CONFIG.model) persistVizAPIConfig();
+  }
+  // A SINGLE_MODE lock (exam/locked build) always wins over a stored
+  // 'enabled' value — same precedence the live page (webllm.ts) uses.
+  const lock = getSingleModelSetting();
+  if (lock === 'api') API_CONFIG.enabled = true;
+  else if (lock === 'local') API_CONFIG.enabled = false;
+}
+
+function persistVizAPIConfig() {
+  if (vizHidePanel()) return;
+  try {
+    localStorage.setItem('api_config', JSON.stringify({
+      enabled: API_CONFIG.enabled,
+      baseUrl: API_CONFIG.baseUrl,
+      apiKey: API_CONFIG.apiKey,
+      model: API_CONFIG.model
+    }));
+  } catch { /* ignore quota / private-mode errors */ }
+}
+
+function updateVizStatusBar() {
+  const t = getEl<HTMLElement>("viz-ai-status-text");
+  if (!t) return;
+  if (API_CONFIG.enabled) {
+    const endpoint = API_CONFIG.baseUrl || '(not set)';
+    const model = API_CONFIG.model || '(not set)';
+    t.textContent = '✓ API: ' + endpoint + ' · Model: ' + model;
+  } else {
+    const savedModel = (typeof localStorage !== 'undefined') ? localStorage.getItem('webllm_active_model') : null;
+    const model = isEngineReady ? selectedModel : (savedModel || 'not configured');
+    t.textContent = 'Local: ' + model;
+  }
+}
+
+/** Hide the mode controls + API fields; keep the status bar (unless exam mode). */
+function hideVizConfigPanel() {
+  const mc = getEl<HTMLElement>("viz-mode-controls-div");
+  if (mc) mc.style.display = 'none';
+  document.querySelectorAll('.viz-api-only').forEach((el) => (el as HTMLElement).style.display = 'none');
+  const bar = getEl<HTMLElement>("viz-ai-status-bar");
+  if (bar) bar.style.display = vizHidePanel() ? 'none' : 'block';
+  if (!vizHidePanel()) updateVizStatusBar();
+}
+
+/** Show the mode controls + the current mode's fields. */
+function showVizConfigPanel() {
+  const bar = getEl<HTMLElement>("viz-ai-status-bar");
+  if (bar) bar.style.display = vizHidePanel() ? 'none' : 'block';
+  const mc = getEl<HTMLElement>("viz-mode-controls-div");
+  if (mc) mc.style.display = '';
+  updateVizModeDisplay();
+  if (API_CONFIG.enabled) {
+    document.querySelectorAll('.viz-api-only').forEach((el) => (el as HTMLElement).style.display = 'block');
+    const url = getEl<HTMLInputElement>("viz-api-url"); if (url) url.value = API_CONFIG.baseUrl;
+    const key = getEl<HTMLInputElement>("viz-api-key"); if (key) key.value = API_CONFIG.apiKey;
+    const model = getEl<HTMLInputElement>("viz-api-model"); if (model) model.value = API_CONFIG.model;
+    updateVizConfirmState();
+  } else {
+    document.querySelectorAll('.viz-api-only').forEach((el) => (el as HTMLElement).style.display = 'none');
+  }
+}
+
+function updateVizModeDisplay() {
+  const lock = getSingleModelSetting();
+  const status = getEl<HTMLElement>("viz-mode-status");
+  const toggleBtn = getEl<HTMLElement>("viz-toggle-api");
+  const mc = getEl<HTMLElement>("viz-mode-controls-div");
+  if (status) {
+    if (lock === 'local' || lock === 'api') {
+      status.style.display = 'none';
+    } else {
+      status.style.display = '';
+      status.textContent = API_CONFIG.enabled ? 'API Mode' : 'Local Mode';
+      status.className = API_CONFIG.enabled ? 'mode-status api-mode' : 'mode-status local-mode';
+    }
+  }
+  if (toggleBtn) {
+    if (lock === 'local' || lock === 'api') {
+      toggleBtn.style.display = 'none';
+    } else {
+      toggleBtn.style.display = '';
+      toggleBtn.textContent = API_CONFIG.enabled ? 'Switch to Local Mode' : 'Switch to API Mode';
+    }
+  }
+  if (mc) {
+    if (lock === 'local' || lock === 'api') mc.style.display = 'none';
+  }
+}
+
+function vizApiInputsDiffer(): boolean {
+  const url = getEl<HTMLInputElement>("viz-api-url");
+  const key = getEl<HTMLInputElement>("viz-api-key");
+  const model = getEl<HTMLInputElement>("viz-api-model");
+  if (!url || !key || !model) return false;
+  return url.value.trim() !== API_CONFIG.baseUrl ||
+         key.value !== API_CONFIG.apiKey ||
+         model.value.trim() !== API_CONFIG.model;
+}
+
+function updateVizConfirmState() {
+  const b = getEl<HTMLButtonElement>("viz-api-confirm-btn");
+  if (b) b.disabled = !vizApiInputsDiffer();
+}
+
+function confirmVizConfig() {
+  const url = getEl<HTMLInputElement>("viz-api-url");
+  const key = getEl<HTMLInputElement>("viz-api-key");
+  const model = getEl<HTMLInputElement>("viz-api-model");
+  if (url) API_CONFIG.baseUrl = url.value.trim();
+  if (key) API_CONFIG.apiKey = key.value;
+  if (model) API_CONFIG.model = model.value.trim();
+  persistVizAPIConfig();
+  hideVizConfigPanel();
+  updateVizAskButton();
+}
+
+function cancelVizConfigEdit() {
+  const url = getEl<HTMLInputElement>("viz-api-url");
+  const key = getEl<HTMLInputElement>("viz-api-key");
+  const model = getEl<HTMLInputElement>("viz-api-model");
+  if (url) url.value = API_CONFIG.baseUrl;
+  if (key) key.value = API_CONFIG.apiKey;
+  if (model) model.value = API_CONFIG.model;
+  updateVizConfirmState();
+  hideVizConfigPanel();
+}
+
+function toggleVizApiMode() {
+  const lock = getSingleModelSetting();
+  if (lock === 'local' || lock === 'api') return;
+  API_CONFIG.enabled = !API_CONFIG.enabled;
+  persistVizAPIConfig();
+  showVizConfigPanel();
+  updateVizAskButton();
+}
+
+// Ask AI is enabled in API mode (no local download needed) or when the local
+// engine is ready. Toggling/confirming re-evaluates it.
+function updateVizAskButton() {
+  const ask = getEl<HTMLButtonElement>("viz-ask-ai");
+  if (!ask) return;
+  ask.disabled = API_CONFIG.enabled ? false : !isEngineReady;
+}
+
+// Bind the AI Tutor status bar + config panel and set the initial state.
+// Called from initVisualizeAI (always, regardless of mode / early return).
+function initVizConfigPanel() {
+  const bar = getEl<HTMLElement>("viz-ai-status-bar");
+  if (bar) bar.style.display = vizHidePanel() ? 'none' : 'block';
+
+  const editBtn = getEl<HTMLButtonElement>("viz-ai-edit-btn");
+  if (editBtn) {
+    editBtn.addEventListener('click', () => {
+      const mc = getEl<HTMLElement>("viz-mode-controls-div");
+      const shown = mc && mc.style.display !== 'none';
+      if (shown) hideVizConfigPanel();
+      else showVizConfigPanel();
+    });
+  }
+  const toggleBtn = getEl<HTMLButtonElement>("viz-toggle-api");
+  if (toggleBtn) toggleBtn.addEventListener('click', toggleVizApiMode);
+  ['viz-api-url', 'viz-api-key', 'viz-api-model'].forEach((id) => {
+    const inp = getEl<HTMLInputElement>(id);
+    if (inp) inp.addEventListener('input', updateVizConfirmState);
+  });
+  const confirmBtn = getEl<HTMLButtonElement>("viz-api-confirm-btn");
+  if (confirmBtn) confirmBtn.addEventListener('click', confirmVizConfig);
+  const cancelBtn = getEl<HTMLButtonElement>("viz-api-cancel-btn");
+  if (cancelBtn) cancelBtn.addEventListener('click', cancelVizConfigEdit);
+
+  // Initial state: status bar visible (if not exam mode), sub-panels hidden.
+  if (!vizHidePanel()) hideVizConfigPanel();
+}
+
 export function initVisualizeAI(params: VisualizeAIInitParams) {
+  // Load the shared API config (same localStorage key as the live page) and
+  // init the "AI Tutor" status bar + config panel. Done FIRST, before the
+  // local-UI guard below, so the panel is available even if the local model
+  // controls are absent. This must run before any code below reads
+  // API_CONFIG.enabled, so the page honours a saved endpoint/model at call time.
+  loadVizAPIConfig();
+  initVizConfigPanel();
+
   const modelSelection = getEl<HTMLSelectElement>("viz-model-selection");
   const downloadBtn = getEl<HTMLButtonElement>("viz-download");
   const askAIButton = getEl<HTMLButtonElement>("viz-ask-ai");

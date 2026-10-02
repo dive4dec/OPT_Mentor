@@ -129,6 +129,45 @@
   </div>
 
   <div id="pyOutputPane"></div>
+  <!-- AI Tutor status bar + config panel (sibling of the error-gated
+       #visualize-ai-panel, so the user can reach AI config WITHOUT a
+       frontend error showing). Mirrors the live page (live.html) and the CPP
+       default page. The default page previously only used the local WebLLM
+       model and had NO way to configure an OpenAI-compatible API endpoint at
+       runtime — API config was build-time only. Same `api_config` localStorage
+       key as the live page, so a configured endpoint/model works on both. -->
+  <div id="viz-ai-config-bar" style="margin-top: 12px; width: 550px; max-width: 100%; box-sizing: border-box;">
+    <div id="viz-ai-status-bar" style="display: block; margin-top: 6px; padding: 6px 10px; background: #f0f7ff; border: 1px solid #d0e0ff; border-radius: 4px; font-size: 9pt;">
+      <button id="viz-ai-edit-btn" class="smallBtn" type="button" style="margin-right: 8px; font-size: 8pt;">AI Tutor</button>
+      <span id="viz-ai-status-text" style="color: #333;"></span>
+    </div>
+
+    <div id="viz-mode-controls-div" style="margin-top: 10px; display: none;">
+      <span id="viz-mode-status" style="margin-right: 8px; font-weight: bold;">Local Mode</span>
+      <button id="viz-toggle-api" class="smallBtn" type="button">Switch to API Mode</button>
+    </div>
+
+    <div class="viz-api-only" style="display: none; margin-top: 10px;">
+      <div style="border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+        <div style="margin-bottom: 8px;">
+          <label for="viz-api-url">API Server URL</label>
+          <input type="text" id="viz-api-url" placeholder="e.g., https://api.openai.com/v1" style="width: 100%; box-sizing: border-box;">
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label for="viz-api-key">API Key</label>
+          <input type="password" id="viz-api-key" placeholder="Your API key" style="width: 100%; box-sizing: border-box;">
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label for="viz-api-model">Model Name</label>
+          <input type="text" id="viz-api-model" placeholder="e.g., gpt-4o-mini" style="width: 100%; box-sizing: border-box;">
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+          <button id="viz-api-cancel-btn" class="smallBtn" type="button">Cancel</button>
+          <button id="viz-api-confirm-btn" class="smallBtn" type="button" disabled>Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div id="visualize-ai-panel" style="display: none; margin-top: 12px; width: 550px; max-width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
     <div style="display: none; margin-bottom: 8px; font-weight: bold;">AI Assistant (Local)</div>
     <div style="margin-bottom: 8px;">
