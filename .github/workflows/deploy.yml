@@ -105,7 +105,17 @@ jobs:
         # Service worker (minimal pass-through) + PWA manifest + icons so the
         # site is installable. Relative paths in the manifest keep it
         # base-path-agnostic (/OPT_Mentor/, /OPT_Mentor_/ flex, GH Pages root).
-        cp sw.js build/
+        #
+        # Stamp BUILD_VERSION into sw.js (identical to the Dockerfile/K8s build).
+        # It's derived from the emitted bundle names, so any deploy that changes
+        # a bundle changes this file's bytes -> browsers see a new SW version ->
+        # the page's auto-reload fires -> returning users self-heal to the fresh
+        # (no-store) HTML without clearing cache. A bare `cp sw.js build/` leaves
+        # the __BUILD_VERSION__ placeholder identical every deploy, so returning
+        # users stay pinned to the old bundle (the "deploy doesn't show up" bug).
+        BV=$(ls build/*.bundle.*.js 2>/dev/null | sort | sha256sum | cut -c1-16)
+        sed "s/__BUILD_VERSION__/${BV:-none}/g" sw.js > build/sw.js
+        chmod 644 build/sw.js
         cp manifest.webmanifest build/
         cp -r pwa build/pwa
 
