@@ -24,25 +24,27 @@ jobs:
       # anything set in this file is baked into the published JS bundle and
       # anyone can read it out of the browser.
       #
-      # SINGLE_MODE=local locks the site to WebLLM (in-browser) mode.
-      # INJECT_API_CONFIG stays 'true' on purpose: the build only defines the
-      # __SINGLE_MODE__ constant inside the "inject API" block, so we keep it
-      # on to preserve the locked-local behavior — but every API_* value below
-      # is EMPTY, so no key / base URL / model is published. (Empty __API_KEY__
-      # / __API_BASE_URL__ are inert in local mode.)
+      # SINGLE_MODE='' (empty) leaves the site SWITCHABLE: users can toggle
+      # Local (in-browser WebLLM) <-> API and configure their own endpoint/key
+      # via the AI Tutor panel. INJECT_API_CONFIG stays 'true' on purpose: the
+      # build only defines the __SINGLE_MODE__ constant inside the "inject API"
+      # block, so we keep it on — but every API_* value below is EMPTY, so no
+      # key / base URL / model is published. (Empty __API_KEY__ / __API_BASE_URL__
+      # are inert until a user types their own values in the panel.)
       #
       # To ship a server-LLM build instead, set SINGLE_MODE=api and read the
       # API_* values from GitHub secrets — e.g.
       #   API_BASE_URL: ${{ secrets.API_BASE_URL }}
       #   API_KEY: ${{ secrets.API_KEY }}
       # Never commit real values.
-      SINGLE_MODE: 'local'      # 'local' | 'api' | '' (empty = allow switching)
+      SINGLE_MODE: ''            # '' | 'local' | 'api'  ('' = allow switching)
       INJECT_API_CONFIG: 'true' # keeps __SINGLE_MODE__ defined; see note above
       API_INJECT_TARGET: 'define'   # 'define' -> into JS; 'window' -> into HTML windowVars
       API_BASE_URL: ''            # EMPTY: no course-server URL in the public bundle
       API_KEY: ''                 # EMPTY: no secret in the public bundle
       API_MODEL: ''               # EMPTY
-      # blank: INJECT_API_CONFIG decides panel visibility (hidden in local mode)
+      # blank -> panel VISIBLE (users can configure). Set 'true' only for an
+      # exam/locked build where students must not change endpoint or model.
       API_HIDE_API_PANEL: ''
 
     

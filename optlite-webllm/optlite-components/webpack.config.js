@@ -4,7 +4,11 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 // Build-time injection via environment variables (set in CI or Dockerfile)
 const injectApi = String(process.env.INJECT_API_CONFIG || '').toLowerCase() === 'true';
-const hideApiPanel = String(process.env.API_HIDE_API_PANEL || process.env.INJECT_API_CONFIG || '').toLowerCase() === 'true';
+// hideApiPanel: only hide when explicitly requested.
+// Previously fell back to INJECT_API_CONFIG, which meant any build with
+// INJECT_API_CONFIG=true always hid the panel. Now API_HIDE_API_PANEL must
+// be explicitly 'true' to hide; empty/'false' means show.
+const hideApiPanel = String(process.env.API_HIDE_API_PANEL || '').toLowerCase() === 'true';
 const injectTarget = String(process.env.API_INJECT_TARGET || 'window').toLowerCase();
 
 // Sub-path deployment: set PUBLIC_PATH=/OPT_Mentor/ when serving under a sub-path.
