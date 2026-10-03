@@ -117,18 +117,24 @@ function shouldShowAskButton(): boolean {
 function setPanelVisibility() {
   const panel = getEl<HTMLElement>("visualize-ai-panel");
   const askButton = getEl<HTMLButtonElement>("viz-ask-ai");
-  if (!panel || !askButton) {
-    return;
-  }
 
-  // The panel is driven purely by whether a frontend error is currently
-  // shown, NOT by appMode — so the user can see their code AND the error AND
-  // the AI conversation at once (the error text lives in #frontendErrorOutput,
-  // inside the editor pane, visible in edit mode; the AI panel sits below it).
-  // The AI response is preserved across edits; clearAiConversation() (fired
-  // on a fresh execution) is the only thing that resets it.
-  panel.style.display = hasFrontendError() ? "block" : "none";
-  askButton.style.display = shouldShowAskButton() ? "inline-block" : "none";
+  // The panel is ALWAYS visible — it is the content of #opt-ai-band, which sits
+  // at the BOTTOM seam (see opt-shell.ts). It hosts the AI Tutor status bar +
+  // config, which must be reachable WITHOUT a frontend error (mirroring live
+  // mode, whose #aichatbox is always open). opt-shell's syncBand keeps the seam
+  // band open while this pane is visible, and hides the whole band (status bar
+  // included) in exam mode via the panel-wide API_HIDE_API_PANEL check below.
+  if (panel) {
+    const w: any = (window as any) || {};
+    const hideAll = (typeof __API_HIDE_API_PANEL__ !== 'undefined')
+      ? (!!__API_HIDE_API_PANEL__)
+      : (!!w.API_HIDE_API_PANEL);
+    panel.style.display = hideAll ? 'none' : 'block';
+  }
+  // Only the Ask AI button is gated on a frontend error + engine readiness.
+  if (askButton) {
+    askButton.style.display = shouldShowAskButton() ? "inline-block" : "none";
+  }
 }
 
 // Reset the AI chat so a new execution starts clean. Invoked from the
@@ -426,17 +432,18 @@ function updateVizStatusBar() {
   }
 }
 
-/** Hide the mode controls + API fields; keep the status bar (unless exam mode). */
+/** Hide the mode controls + both mode's config blocks; keep the status bar. */
 function hideVizConfigPanel() {
   const mc = getEl<HTMLElement>("viz-mode-controls-div");
   if (mc) mc.style.display = 'none';
   document.querySelectorAll('.viz-api-only').forEach((el) => (el as HTMLElement).style.display = 'none');
+  document.querySelectorAll('.viz-local-only').forEach((el) => (el as HTMLElement).style.display = 'none');
   const bar = getEl<HTMLElement>("viz-ai-status-bar");
   if (bar) bar.style.display = vizHidePanel() ? 'none' : 'block';
   if (!vizHidePanel()) updateVizStatusBar();
 }
 
-/** Show the mode controls + the current mode's fields. */
+/** Show the mode controls + the current mode's config (local list or API fields). */
 function showVizConfigPanel() {
   const bar = getEl<HTMLElement>("viz-ai-status-bar");
   if (bar) bar.style.display = vizHidePanel() ? 'none' : 'block';
@@ -444,14 +451,29 @@ function showVizConfigPanel() {
   if (mc) mc.style.display = '';
   updateVizModeDisplay();
   if (API_CONFIG.enabled) {
+    // API mode: show API fields, hide the local model list.
     document.querySelectorAll('.viz-api-only').forEach((el) => (el as HTMLElement).style.display = 'block');
+    document.querySelectorAll('.viz-local-only').forEach((el) => (el as HTMLElement).style.display = 'none');
     const url = getEl<HTMLInputElement>("viz-api-url"); if (url) url.value = API_CONFIG.baseUrl;
     const key = getEl<HTMLInputElement>("viz-api-key"); if (key) key.value = API_CONFIG.apiKey;
     const model = getEl<HTMLInputElement>("viz-api-model"); if (model) model.value = API_CONFIG.model;
     updateVizConfirmState();
   } else {
+    // Local mode: show the local model list + download, hide API fields.
+    document.querySelectorAll('.viz-local-only').forEach((el) => (el as HTMLElement).style.display = 'block');
     document.querySelectorAll('.viz-api-only').forEach((el) => (el as HTMLElement).style.display = 'none');
+    // Make sure the model <select> is itself visible when there is at least one
+    // available local model (matches live mode, which always shows the list in
+    // Local mode). It stays hidden only when no model is available at all.
+    const modelSel = getEl<HTMLSelectElement>("viz-model-selection");
+    if (modelSel && availableModels.length >= 1) modelSel.style.display = '';
+    const dl = getEl<HTMLElement>("viz-download");
+    if (dl) dl.style.display = '';
   }
+  // Refresh the status bar text so it reflects the mode after a toggle
+  // (toggling to API must NOT leave a stale "Local: <model>" line — live mode
+  // updates its status whenever the config is shown).
+  if (!vizHidePanel()) updateVizStatusBar();
 }
 
 function updateVizModeDisplay() {
@@ -594,9 +616,12 @@ export function initVisualizeAI(params: VisualizeAIInitParams) {
     selectedModel = availableModels[0];
   }
   modelSelection.value = selectedModel;
-  if (availableModels.length <= 1) {
-    modelSelection.style.display = "none";
-  }
+  // The model <select> is always populated with the available local models and
+  // shown/hidden by showVizConfigPanel()/.viz-local-only (visible in Local mode).
+  // It shows whenever >=1 model is available — matching live mode, which always
+  // shows the model list in Local mode (a single-model build just shows one
+  // option). It is only hidden when there is no model at all (no WebGPU / none
+  // available).
 
   askAIButton.disabled = true;
 
@@ -634,17 +659,27 @@ export function initVisualizeAI(params: VisualizeAIInitParams) {
     clearAiConversation();
   });
 
-  // API mode: hide the local-model UI (model <select> + Confirm/Pull button
-  // and the local-status line) — the model is fixed server-side, so there is
-  // nothing for the user to pick. Mirrors the live page's local-only hiding.
-  const localModelRow = modelSelection.parentElement;
-  if (localModelRow) {
-    localModelRow.style.display = "none";
-  }
+  // The local model list (select + Load button) lives in .viz-local-only, which
+  // showVizConfigPanel()/hideVizConfigPanel() toggle by mode: hidden in API mode
+  // (the model is fixed server-side, so there is nothing to pick) and visible in
+  // Local mode so the user can choose a model. Do NOT unconditionally hide the
+  // model row here — that was the bug: it hid the list even in Local mode.
   const localStatus = getEl<HTMLElement>("download-status");
   if (localStatus) {
     localStatus.classList.add("hidden");
   }
+
+  // Local model "Load" button: pick a model from the list and (re)load it.
+  // Mirrors live mode's model-selection + download button. initializeWebLLMEngine()
+  // reads modelSelection.value, so the button applies the currently-selected model.
+  downloadBtn.addEventListener("click", () => {
+    if (API_CONFIG.enabled || availableModels.length === 0) return; // local engine only
+    selectedModel = modelSelection.value;
+    askAIButton.disabled = true;
+    initializeWebLLMEngine()
+      .then(() => { askAIButton.disabled = false; setPanelVisibility(); })
+      .catch(() => { askAIButton.disabled = true; setPanelVisibility(); });
+  });
 
   // In API mode, no model download needed — enable Ask AI immediately
   if (API_CONFIG.enabled) {
