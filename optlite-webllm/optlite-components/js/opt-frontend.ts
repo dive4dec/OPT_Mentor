@@ -73,6 +73,13 @@ export class OptFrontend extends AbstractBaseFrontend {
 
   preseededCurInstr: number = undefined;
 
+  // True while a preseeded display restore is in progress (set in
+  // parseQueryString() just before our own $.bbq.removeState()). Lets the
+  // hashchange handler below ignore the spurious hashchange that removeState()
+  // fires — otherwise it reads "no code, no mode" and forces edit mode,
+  // destroying the visualization the restore just started.
+  _suppressEmptyHashchange: boolean = false;
+
   constructor(params = {}) {
     super(params);
 
@@ -100,9 +107,20 @@ export class OptFrontend extends AbstractBaseFrontend {
     // for some weird reason, jQuery doesn't work here:
     //   $(window).bind("hashchange"
     window.addEventListener("hashchange", (e) => {
+      var hasCode = !!$.bbq.getState('code');
+      var hasMode = $.bbq.getState('mode') !== undefined;
+      // During a preseeded restore, our own $.bbq.removeState() (end of
+      // parseQueryString) wipes the URL and fires a hashchange with an empty
+      // hash. That is URL cleanup, not a user navigation — ignore it, or it
+      // would force edit mode and destroy the visualization just started
+      // (see _suppressEmptyHashchange).
+      if (!hasCode && !hasMode && this._suppressEmptyHashchange) {
+        this._suppressEmptyHashchange = false;
+        return;
+      }
       // if you've got some preseeded code, then parse the entire query
       // string from scratch just like a page reload
-      if ($.bbq.getState('code')) {
+      if (hasCode) {
         this.parseQueryString();
       } else {
         // otherwise just do an incremental update
@@ -746,6 +764,13 @@ export class OptFrontend extends AbstractBaseFrontend {
       this.preferredDisplayMode = 'ai_display'; // always use "ai_display" even when "mode=display" is used in the url
 
       this.executeCode(this.preseededCurInstr); // will switch to 'display' mode
+    }
+    // The $.bbq.removeState() below wipes the URL and fires a hashchange with
+    // an empty hash. If we're restoring preseeded code into display mode, flag
+    // it so the hashchange handler ignores this self-triggered cleanup instead
+    // of forcing edit mode (which would destroy the visualization).
+    if (queryStrOptions.preseededCode) {
+      this._suppressEmptyHashchange = true;
     }
     $.bbq.removeState(); // clean up the URL no matter what
   }
