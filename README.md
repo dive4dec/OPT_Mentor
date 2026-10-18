@@ -10,7 +10,7 @@
 
 ## Try it — no install, runs in your browser
 
-[![Try OPT_Mentor](https://img.shields.io/badge/Try-OPT_Mentor-4c9aff?style=for-the-badge)](https://dive4dec.github.io/OPT_Mentor/live.html#code=def%20factorial(n)%3A%0A%20%20%20%20if%20n%20%3C%3D%201%3A%0A%20%20%20%20%20%20%20%20return%201%0A%20%20%20%20return%20n%20*%20factorial(n%20-%201)%0A%0Aresult%20=%20factorial(5)%0Aprint(result)&curInstr=8&mode=display&origin=opt-live.js&py=pyodide&rawInputLstJSON=%5B%5D)
+[![Try OPT_Mentor](https://img.shields.io/badge/Try-OPT_Mentor-4c9aff?style=for-the-badge)](https://dive4dec.github.io/OPT_Mentor/live.html#code=def%20factorial%28n%29%3A%0A%20%20%20%20if%20n%20%3C%3D%201%3A%0A%20%20%20%20%20%20%20%20return%201%0A%20%20%20%20return%20n%20*%20factorial%28n%20-%201%29%0A%0Aresult%20%3D%20factorial%285%29%0Aprint%28result%29&curInstr=23&mode=display&origin=opt-live.js&py=pyodide&rawInputLstJSON=%5B%5D)
 
 The badge above opens a ready-to-step example (a recursive `factorial`) on the
 GitHub Pages deployment. Watch the call stack on the right — the recursion
@@ -28,7 +28,7 @@ point:
 >
 > ```html
 > <iframe
->   src="https://dive4dec.github.io/OPT_Mentor/live.html#code=def%20factorial(n)%3A%0A%20%20%20%20if%20n%20%3C%3D%201%3A%0A%20%20%20%20%20%20%20%20return%201%0A%20%20%20%20return%20n%20*%20factorial(n%20-%201)%0A%0Aresult%20=%20factorial(5)%0Aprint(result)&curInstr=8&mode=display&origin=opt-live.js&py=pyodide&rawInputLstJSON=%5B%5D"
+>   src="https://dive4dec.github.io/OPT_Mentor/live.html#code=def%20factorial%28n%29%3A%0A%20%20%20%20if%20n%20%3C%3D%201%3A%0A%20%20%20%20%20%20%20%20return%201%0A%20%20%20%20return%20n%20*%20factorial%28n%20-%201%29%0A%0Aresult%20%3D%20factorial%285%29%0Aprint%28result%29&curInstr=23&mode=display&origin=opt-live.js&py=pyodide&rawInputLstJSON=%5B%5D"
 >   width="100%" height="720" style="border:1px solid #ccc;"
 >   title="OPT_Mentor — in-browser Python tutor"></iframe>
 > ```
