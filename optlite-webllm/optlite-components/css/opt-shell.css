@@ -483,3 +483,40 @@ html[data-theme="dark"] #opt-toast { background: #e6edf3; color: #0d1117; }
   #opt-navbar .opt-navbtn span:not(.opt-ico) { display: none; } /* icon-only */
   #opt-ai-band { height: 160px; }
 }
+
+/* ---- Live Edit on narrow screens: stack code ABOVE the visualization -------
+   Desktop pins the code column at 550px (flex-shrink:0) next to a flex:1
+   visualization (min-width:0). On a ~375px phone that leaves the viz ~0px wide,
+   which then trips syncVizColumn's `getBoundingClientRect().width > 0` guard and
+   adds .no-viz — hiding the visualization entirely (the reported "width becomes
+   zero"). Stacking gives the editor full width (good for typing) and the
+   visualization the remaining vertical space so it can actually render. Below
+   768px the 550px code column cannot share the row with a usable viz. */
+@media (max-width: 767px) {
+  #opt-shell[data-page="live"] .opt-workspace-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  /* The vertical (code|viz boundary) drag seam is meaningless once stacked. */
+  #opt-shell[data-page="live"] .opt-workspace-row .opt-resizer-v {
+    display: none;
+  }
+  /* Code + visualization split the vertical space 50/50; each scrolls
+     internally if it overflows. The CM6 editor fills its column via its
+     ResizeObserver (height:auto + flex:1). Later-in-source rules here beat the
+     desktop defaults above at equal specificity. */
+  #opt-shell[data-page="live"] .opt-workspace-row #pyInputPane {
+    flex: 1 1 auto;
+    width: 100% !important;
+    min-width: 0;
+  }
+  #opt-shell[data-page="live"] .opt-workspace-row #pyInputPane > #codeInputPane {
+    flex: 1 1 auto;
+    height: auto !important;
+    min-height: 0;
+  }
+  #opt-shell[data-page="live"] .opt-workspace-row #pyOutputPane {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
