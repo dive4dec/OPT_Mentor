@@ -75,6 +75,25 @@
 # number of significant digits for floats
 FLOAT_PRECISION = 4
 
+# JS doubles (the front-end JSON.parse's the trace into JS numbers) are only
+# exact up to 2^53-1. A Python int larger than that in magnitude gets written by
+# json.dumps as a raw N-digit JSON number that JS parses as Infinity (e.g.
+# 10**3000) or, just over the limit, silently rounds. To keep the visualization
+# correct without a front-end change, such ints are encoded as a SPECIAL_FLOAT
+# token carrying a truncated string (sign + first BIG_INT_PREFIX_DIGITS digits
+# + '...'), which the front-end already renders verbatim in a number span.
+JS_MAX_SAFE_INT = 2**53 - 1
+BIG_INT_PREFIX_DIGITS = 15
+
+
+def _truncate_big_int(n):
+  """Truncate an int too big for a JS double to sign + first 15 digits + '...'."""
+  sign = '-' if n < 0 else ''
+  digits = str(abs(n))
+  if len(digits) > BIG_INT_PREFIX_DIGITS:
+    digits = digits[:BIG_INT_PREFIX_DIGITS] + '...'
+  return sign + digits
+
 
 from collections import defaultdict
 import re, types
@@ -135,6 +154,12 @@ def encode_primitive(dat):
         return ['SPECIAL_FLOAT', '%.1f' % dat]
       else:
         return round(dat, FLOAT_PRECISION)
+  elif t is int and abs(dat) > JS_MAX_SAFE_INT:
+    # Too big for a JS double: json.dumps would emit it as a raw N-digit number
+    # that the front-end JSON.parse's into Infinity (10**3000) or silently
+    # rounds. Ship a truncated string so the viz shows '...' instead. (Strict
+    # `t is int` excludes bool, which is an int subclass in Python 3.)
+    return ['SPECIAL_FLOAT', _truncate_big_int(dat)]
   elif t is str and (not is_python3):
     # hack only for Python 2 strings ... always turn into unicode
     # and display '?' when it's not valid unicode

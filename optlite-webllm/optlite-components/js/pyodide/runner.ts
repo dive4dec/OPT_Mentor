@@ -1,5 +1,5 @@
 import { OptLite, combineDefaults } from './global'
-import { default as optlite } from '../../dist/optlite-0.0.6-py2.py3-none-any.whl';
+import { default as optlite } from '../../dist/optlite-0.0.7-py2.py3-none-any.whl';
 
 // Pyodide v314+ requires a module worker (classic workers no longer supported).
 // The worker is built as a separate webpack entry point, referenced BY NAME at
