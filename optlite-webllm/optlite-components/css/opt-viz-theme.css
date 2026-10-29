@@ -55,6 +55,7 @@ html[data-theme="dark"] div.ExecutionVisualizer table.stackTbl {
   background-color: var(--viz-object-bg);
   color: var(--viz-code-line-fg);
 }
+html[data-theme="dark"] div.ExecutionVisualizer table.dictTbl td.dictVal,
 html[data-theme="dark"] div.ExecutionVisualizer table.instTbl td.instVal,
 html[data-theme="dark"] div.ExecutionVisualizer table.classTbl td.classVal,
 html[data-theme="dark"] div.ExecutionVisualizer td.funcCod {
@@ -145,6 +146,7 @@ html[data-theme="dark"] div.ExecutionVisualizer .ui-icon { filter: invert(0.85);
     background-color: var(--viz-object-bg);
     color: var(--viz-code-line-fg);
   }
+  html[data-theme="auto"] div.ExecutionVisualizer table.dictTbl td.dictVal,
   html[data-theme="auto"] div.ExecutionVisualizer table.instTbl td.instVal,
   html[data-theme="auto"] div.ExecutionVisualizer table.classTbl td.classVal,
   html[data-theme="auto"] div.ExecutionVisualizer td.funcCod {
