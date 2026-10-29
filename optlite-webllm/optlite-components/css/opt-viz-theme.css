@@ -61,6 +61,16 @@ html[data-theme="dark"] div.ExecutionVisualizer td.funcCod {
   background-color: var(--viz-object-bg);
   color: var(--viz-code-line-fg);
 }
+/* dict/inst/class KEY cells — base pytutor.css paints them #faebbf (light
+   yellow), which the value-cell override above never touches (a child that
+   sets its own background-color keeps it). Light key text on yellow =
+   illegible in dark mode. Same trap as the v410 vector-element fix. */
+html[data-theme="dark"] div.ExecutionVisualizer table.dictTbl td.dictKey,
+html[data-theme="dark"] div.ExecutionVisualizer table.instTbl td.instKey,
+html[data-theme="dark"] div.ExecutionVisualizer table.classTbl td.classKey {
+  background-color: var(--viz-frame-header-bg);
+  color: var(--viz-code-line-fg);
+}
 /* step-control buttons + input (were default light browser widgets) */
 html[data-theme="dark"] div.ExecutionVisualizer #vcrControls button,
 html[data-theme="dark"] div.ExecutionVisualizer #raw_input_submit_btn {
@@ -139,6 +149,14 @@ html[data-theme="dark"] div.ExecutionVisualizer .ui-icon { filter: invert(0.85);
   html[data-theme="auto"] div.ExecutionVisualizer table.classTbl td.classVal,
   html[data-theme="auto"] div.ExecutionVisualizer td.funcCod {
     background-color: var(--viz-object-bg);
+    color: var(--viz-code-line-fg);
+  }
+  /* dict/inst/class KEY cells — auto+dark twin of the explicit-dark rule
+     above (an auto-block-only rule would be invisible to dark-OS users). */
+  html[data-theme="auto"] div.ExecutionVisualizer table.dictTbl td.dictKey,
+  html[data-theme="auto"] div.ExecutionVisualizer table.instTbl td.instKey,
+  html[data-theme="auto"] div.ExecutionVisualizer table.classTbl td.classKey {
+    background-color: var(--viz-frame-header-bg);
     color: var(--viz-code-line-fg);
   }
   html[data-theme="auto"] div.ExecutionVisualizer #vcrControls button,
