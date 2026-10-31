@@ -773,6 +773,28 @@ export class OptFrontend extends AbstractBaseFrontend {
       this._suppressEmptyHashchange = true;
     }
     $.bbq.removeState(); // clean up the URL no matter what
+
+    // Apply edit mode to the DOM DETERMINISTICALLY (bug fix).
+    //
+    // This page's mode has always been applied as a side effect: removeState()
+    // changes the URL, which fires a hashchange, whose handler calls
+    // updateAppDisplay(getState('mode')). But removeState() on an ALREADY-EMPTY
+    // hash changes nothing, so NO hashchange fires — exactly the case for a
+    // permalink resolved down to a bare '#' (or a plain reload of one). Then
+    // updateAppDisplay never runs, the output pane stays visible, and the code
+    // editor is left at its capped height instead of filling the band.
+    //
+    // In the display branch above, executeCode has already switched the UI into
+    // display mode (and the empty-hashchange is suppressed above), so we must
+    // NOT touch the mode there. In every other case we're meant to be in edit
+    // mode, so enter it explicitly — idempotent, and produces the same layout
+    // the hashchange path would have.
+    const enteredDisplayMode = (queryStrOptions.appMode == 'display' ||
+      queryStrOptions.appMode == 'ai_display' ||
+      queryStrOptions.appMode == 'visualize') && queryStrOptions.preseededCode;
+    if (!enteredDisplayMode) {
+      this.updateAppDisplay('edit');
+    }
   }
 
 
