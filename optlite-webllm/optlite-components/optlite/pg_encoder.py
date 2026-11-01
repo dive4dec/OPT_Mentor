@@ -555,6 +555,18 @@ class ObjectEncoder:
       superclass_names = [e.__name__ for e in dat.__bases__ if e is not object]
       new_obj.extend(['CLASS', get_name(dat), superclass_names])
 
+      # Built-in types (int, str, list, dict, ...) store 30–70 C slot/method
+      # descriptors in their __dict__ (__add__, __ceil__, from_bytes, ...).
+      # There is no finite blocklist that can enumerate them, and they mean
+      # nothing to a student. Pythontutor renders a built-in type as a clean
+      # leaf box (e.g. "x -> built-in class int") with no attribute dump — so
+      # do the same: emit the class name + its superclasses, then stop.
+      # __module__ is the reliable signal: every built-in type reports
+      # __module__ == 'builtins', while user-defined classes report their
+      # defining module (e.g. '__main__') or an imported module name.
+      if getattr(dat, '__module__', None) == 'builtins':
+        return
+
     # traverse inside of its __dict__ to grab attributes
     # (filter out useless-seeming ones, based on anecdotal observation):
     hidden = ('__doc__', '__module__', '__return__', '__dict__',
