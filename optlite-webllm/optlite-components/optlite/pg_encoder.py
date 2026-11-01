@@ -558,7 +558,17 @@ class ObjectEncoder:
     # traverse inside of its __dict__ to grab attributes
     # (filter out useless-seeming ones, based on anecdotal observation):
     hidden = ('__doc__', '__module__', '__return__', '__dict__',
-        '__locals__', '__weakref__', '__qualname__')
+        '__locals__', '__weakref__', '__qualname__',
+        # CPython auto-injects these into every class; they are internal
+        # machinery, never meaningful for a student. (Pythontutor also omits
+        # them.) The ABC entries (__abstractmethods__, __firstlineno__,
+        # __static_attributes__, _abc_impl, _abc_data) only appear on classes
+        # that use abc.ABC / @abstractmethod, but they make every such class
+        # box a wall of noise — e.g. "Animal" showing __abstractmethods__ ->
+        # frozenset({'sound'}), __firstlineno__ -> 4, _abc_impl -> _abc_data
+        # instance, instead of a clean "Animal class [extends ABC] | sound".
+        '__abstractmethods__', '__firstlineno__', '__static_attributes__',
+        '_abc_impl', '_abc_data')
     if hasattr(dat, '__dict__'):
       user_attrs = sorted([e for e in dat.__dict__ if e not in hidden])
     else:
