@@ -1220,6 +1220,10 @@ class DataVisualizer {
   jsPlumbInstance: any;
   jsPlumbManager: any;
 
+  // watches the viz container so we can repaint the jsPlumb arrows whenever its
+  // geometry changes (see constructor). jsPlumb 1.3.10 has no auto-resize hook.
+  _vizResizeObserver: any;
+
   // for selectively hiding variables and fields: d3.map used as a set,
   // with variable/field name as keys (and true as values)
   hideVarsSet: any;
