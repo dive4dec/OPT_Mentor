@@ -29,7 +29,7 @@
 //
 // The version constant below is stamped at build time by the Dockerfile, which
 // computes it from the emitted bundle names.
-const BUILD_VERSION = "d1656e5ee9f61b97";
+const BUILD_VERSION = "48ac17425e426611";
 
 self.addEventListener('install', () => self.skipWaiting());
 
