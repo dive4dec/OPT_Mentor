@@ -523,6 +523,7 @@ export class ExecutionVisualizer {
       resize: (event, ui) => {
         this.domRoot.find("#codeDisplayDiv").css("height", "auto"); // redetermine height if necessary
         this.navControls.renderSliderBreakpoints(this.sortedBreakpointsList); // update breakpoint display accordingly on resize
+        this.redrawConnectors(); // repaint arrows: dragging the divider moves the heap/stack, jsPlumb won't follow on its own
         if (this.params.updateOutputCallback) // report size change
           this.params.updateOutputCallback(this);
       }});
@@ -1296,6 +1297,30 @@ class DataVisualizer {
       EndpointHoverStyles: [{fillStyle: connectorHighlightColor}, {fillstyle: null} /* make right endpoint invisible */],
       HoverPaintStyle: {lineWidth: 1, strokeStyle: connectorHighlightColor},
     });
+
+    // jsPlumb computes each connector's SVG path from the element geometry at
+    // connect() time and never recomputes it on its own. On first load the viz
+    // pane settles to its final size/position *after* the arrows are painted,
+    // leaving them detached from their boxes until you hover one (which makes
+    // jsPlumb repaint just that connection). jsPlumb 1.3.10 has no
+    // repaintOnResize/window-resize hook, so we add our own: watch the viz
+    // container and repaint all connectors whenever its geometry changes. This
+    // fires for the real cause — initial layout settle, divider drag, window
+    // resize, font-metric shift — not just a resize event we choose to listen
+    // for. Debounced with rAF so a burst of resizes coalesces into one repaint.
+    if (typeof ResizeObserver !== 'undefined') {
+      var myDv = this;
+      var repaintPending = false;
+      this._vizResizeObserver = new ResizeObserver(function() {
+        if (repaintPending) return;
+        repaintPending = true;
+        requestAnimationFrame(function() {
+          repaintPending = false;
+          try { myDv.redrawConnectors(); } catch (e) { /* viz may be torn down */ }
+        });
+      });
+      this._vizResizeObserver.observe(this.domRoot[0]);
+    }
   }
 
   height() {
